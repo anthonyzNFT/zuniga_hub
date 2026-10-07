@@ -259,7 +259,12 @@
   .door-card { width: min(420px, 100%); text-align: left; }
   .door img { width: min(180px, 46vw); height: auto; display: block; margin: 0 auto 22px; }
   .door h2 { font-family: Fraunces, serif; font-size: 32px; margin: 0 0 8px; letter-spacing: -.03em; text-align: center; }
-  .door .lead { text-align: center; color: #cfc6ba; margin: 0 0 22px; line-height: 1.45; }
+  .door .lead { text-align: center; color: #cfc6ba; margin: 0 0 14px; line-height: 1.45; }
+  .door select {
+    width: 100%; margin: 0 0 8px; padding: 12px;
+    border-radius: 12px; border: 1px solid rgba(244,239,231,.2);
+    background: #141210; color: #f4efe7;
+  }
   .steps { margin: 0 0 18px; padding: 0; list-style: none; }
   .steps li { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid rgba(244,239,231,.12); font-size: 15px; }
   .steps b { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: #f4efe7; color: #111; font-size: 12px; flex: none; }
@@ -303,19 +308,28 @@
     <img src="icon-512.png" alt="" />
     <h2>Zuniga</h2>
     <p class="lead">A private home for the Zunigas. Add it to the phone, then open it from the icon.</p>
-    <ol class="steps">
-      <li><b>1</b><span>Tap <span class="share-glyph">↑</span> Share in Safari</span></li>
-      <li><b>2</b><span>Tap Add to Home Screen</span></li>
-      <li><b>3</b><span>Tap Add. The icon is the gold Z.</span></li>
-    </ol>
+    <label class="lead" for="platform" style="display:block;text-align:left;font-size:13px;margin:0 0 6px">Your phone</label>
+    <select id="platform">
+      <option value="iphone">iPhone</option>
+      <option value="android">Android</option>
+    </select>
+    <ol class="steps" id="platformSteps"></ol>
     <button class="pill" id="doorHide">Look around first</button>
     <button class="ghost" id="doorLater">Not today</button>
+    <div id="signBox" style="margin-top:18px">
+      <p class="lead" style="margin-bottom:8px">Sign in with the email on the family list.</p>
+      <input id="magicEmail" class="field" type="email" placeholder="Email" style="background:#141210;color:#f4efe7;border:1px solid rgba(244,239,231,.2)" />
+      <button class="pill" id="googleBtn" style="margin-bottom:8px">Continue with Google</button>
+      <button class="ghost" id="magicBtn">Email me a link instead</button>
+      <p class="lead" id="authMsg" style="min-height:1.2em"></p>
+    </div>
   </div>
 </div>
 <div class="sheet" id="sheet">
   <div class="panel" id="panel"></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => [...r.querySelectorAll(s)];
@@ -360,8 +374,19 @@ function nextDow(day, hour) {
 }
 
 let state = JSON.parse(localStorage.getItem(KEY) || "null") || seed();
-const save = () => localStorage.setItem(KEY, JSON.stringify(state));
-const person = id => state.people[id];
+state.posts = [];
+state.asks = [];
+state.events = [];
+state.notes = [];
+state.people = {};
+const sb = window.supabase.createClient(
+  "https://zjaveayndgynoihmclab.supabase.co",
+  "sb_publishable_skQwFelA7mkaAEz4j1Oo2g_omzifsSR",
+  { auth: { detectSessionInUrl: true, persistSession: true, flowType: "pkce" } }
+);
+let session = null;
+const save = () => localStorage.setItem(KEY, JSON.stringify({ theme: state.theme, accent: state.accent, settings: state.settings, setupDone: state.setupDone, tab: state.tab, calView: state.calView }));
+const person = id => state.people[id] || { name: "Family", color: "#c45c26", status: "", bio: "" };
 const initials = name => name.slice(0, 1);
 const ago = t => {
   const s = Math.max(1, (Date.now() - t) / 1000);
@@ -399,7 +424,7 @@ function renderFeed() {
   const cap = state.settings.cap;
   const liveAsks = state.asks.filter(a => a.expires > Date.now());
   $("#feed").innerHTML = `
-    <div class="banner">This phone copy stores everything on this device. Sign-in, push, and live Instagram embeds come with the server.</div>
+    <div class="banner">Signed-in posts are shared. Push and Instagram embeds are not on yet.</div>
     <div class="composer">
       <div class="av" style="background:${person(state.me).color}">${initials(person(state.me).name)}</div>
       <div style="flex:1">
@@ -431,36 +456,42 @@ function renderFeed() {
         <div class="reply-box"><input data-reply="${p.id}" placeholder="Reply" /><button class="pill" data-send="${p.id}">Send</button></div>
       </article>`).join("")}
   `;
-  $("#postBtn").onclick = () => {
+  $("#postBtn").onclick = async () => {
+    if (!session) return alert("Sign in first.");
     const body = $("#postBody").value.trim();
     const ig = $("#igLink").value.trim();
     if (!body && !ig) return;
-    state.posts.unshift({ id: "p"+Date.now(), author: state.me, body, ig, created: Date.now(), replies: [] });
-    notify(`${person(state.me).name} shared an update`, "reply");
-    save(); render();
+    const { error } = await sb.from("posts").insert({ author_id: state.me, body: body || null, instagram_url: ig || null });
+    if (error) return alert(error.message);
+    await loadFamily();
+    render();
   };
-  $("#askBtn").onclick = () => {
+  $("#askBtn").onclick = async () => {
+    if (!session) return alert("Sign in first.");
     if (asksUsed() >= state.settings.cap) return alert("Weekly ask cap reached. It resets Monday.");
     const message = prompt("Ask the family", "What are you doing today?");
     if (!message) return;
-    state.asks.unshift({ id: "a"+Date.now(), from: state.me, message, created: Date.now(), expires: Date.now()+24*3600e3, responses: {} });
+    const { error } = await sb.from("asks").insert({ from_user_id: state.me, message });
+    if (error) return alert(error.message);
     state.askLog[weekKey()] = asksUsed() + 1;
-    notify(`${person(state.me).name} asked: ${message}`, "ask");
-    save(); render();
+    await loadFamily();
+    render();
   };
-  $$("[data-resp]").forEach(b => b.onclick = () => {
-    const a = state.asks.find(x => x.id === b.dataset.ask);
-    a.responses[state.me] = b.dataset.resp;
-    save(); render();
+  $$("[data-resp]").forEach(b => b.onclick = async () => {
+    if (!session) return;
+    const { error } = await sb.from("ask_responses").upsert({ ask_id: b.dataset.ask, user_id: state.me, response: b.dataset.resp });
+    if (error) return alert(error.message);
+    await loadFamily();
+    render();
   });
-  $$("[data-send]").forEach(b => b.onclick = () => {
+  $$("[data-send]").forEach(b => b.onclick = async () => {
     const input = $(`[data-reply="${b.dataset.send}"]`);
     const text = input.value.trim();
-    if (!text) return;
-    const post = state.posts.find(p => p.id === b.dataset.send);
-    post.replies.push({ author: state.me, body: text });
-    if (post.author !== state.me) notify(`${person(state.me).name} replied to a post`, "reply");
-    save(); render();
+    if (!text || !session) return;
+    const { error } = await sb.from("posts").insert({ author_id: state.me, parent_id: b.dataset.send, body: text });
+    if (error) return alert(error.message);
+    await loadFamily();
+    render();
   });
 }
 
@@ -558,10 +589,12 @@ function renderEvents() {
     save(); render();
   });
   $$("[data-open]").forEach(b => b.onclick = () => openSheet("view", b.dataset.open));
-  $$("[data-rsvp]").forEach(b => b.onclick = () => {
-    const e = state.events.find(x => x.id === b.dataset.rsvp);
-    e.rsvps[state.me] = b.dataset.status;
-    save(); render();
+  $$("[data-rsvp]").forEach(b => b.onclick = async () => {
+    if (!session) return alert("Sign in first.");
+    const { error } = await sb.from("event_rsvps").upsert({ event_id: b.dataset.rsvp, user_id: state.me, status: b.dataset.status });
+    if (error) return alert(error.message);
+    await loadFamily();
+    render();
   });
   $$("[data-remind]").forEach(b => b.onclick = () => {
     const e = state.events.find(x => x.id === b.dataset.remind);
@@ -655,9 +688,11 @@ function openSheet(kind, id) {
         ${["going","maybe","no"].map(s => `<button class="chip ${e.rsvps[state.me]===s?"on":""}" data-rsvp="${e.id}" data-status="${s}">${s}</button>`).join("")}
       </div>
       <div class="row" style="margin-top:12px"><button class="ghost" id="closeSheet">Close</button></div>`;
-    $$("[data-rsvp]", $("#panel")).forEach(b => b.onclick = () => {
-      e.rsvps[state.me] = b.dataset.status;
-      save(); openSheet("view", id);
+    $$("[data-rsvp]", $("#panel")).forEach(b => b.onclick = async () => {
+      const { error } = await sb.from("event_rsvps").upsert({ event_id: e.id, user_id: state.me, status: b.dataset.status });
+      if (error) return alert(error.message);
+      await loadFamily();
+      openSheet("view", id);
     });
   } else if (kind === "event") {
     let banner = "";
@@ -697,25 +732,26 @@ function openSheet(kind, id) {
       color = b.dataset.color;
       $$("[data-color]").forEach(x => x.classList.toggle("on", x === b));
     });
-    $("#saveEvent").onclick = () => {
+    $("#saveEvent").onclick = async () => {
+      if (!session) return alert("Sign in first.");
       const title = $("#evTitle").value.trim();
       const when = $("#evWhen").value;
       if (!title || !when) return;
-      const website = $("#evSite").value.trim();
-      state.events.push({
-        id: "e"+Date.now(),
+      const { error } = await sb.from("events").insert({
+        creator_id: state.me,
         title,
-        creator: state.me,
-        starts: new Date(when).toISOString(),
-        location: where.value.trim(),
-        website,
+        starts_at: new Date(when).toISOString(),
+        location: where.value.trim() || null,
+        website: $("#evSite").value.trim() || null,
         color,
-        banner,
-        rsvps: { [state.me]: "going" }
+        banner_url: banner || null
       });
-      notify(`${person(state.me).name} invited you: ${title}`, "event");
-      try { save(); } catch (err) { alert("That banner is too large for this phone copy. Try a smaller photo."); return; }
-      closeSheet(); render();
+      if (error) return alert(error.message);
+      const { data: created } = await sb.from("events").select("id").eq("creator_id", state.me).order("created_at", { ascending: false }).limit(1);
+      if (created && created[0]) await sb.from("event_rsvps").upsert({ event_id: created[0].id, user_id: state.me, status: "going" });
+      closeSheet();
+      await loadFamily();
+      render();
     };
   } else {
     $("#panel").innerHTML = `
@@ -847,6 +883,103 @@ setTimeout(() => {
 }, 400);
 $("#doorHide").onclick = () => { sessionStorage.setItem("zuniga-door", "1"); $("#door").classList.remove("on"); };
 $("#doorLater").onclick = () => { localStorage.setItem("zuniga-door-day", new Date().toDateString()); $("#door").classList.remove("on"); };
+const platformSteps = {
+  iphone: [
+    "Open this page in Safari, not Chrome",
+    "Tap Share, the square with the arrow",
+    "Tap Add to Home Screen, then Add"
+  ],
+  android: [
+    "Open this page in Chrome",
+    "Tap the three dots, then Install app",
+    "If that is missing, tap Add to Home screen, then Install"
+  ]
+};
+function drawPlatform(which) {
+  $("#platform").value = which;
+  $("#platformSteps").innerHTML = platformSteps[which].map((step, i) => `<li><b>${i + 1}</b><span>${step}</span></li>`).join("");
+}
+$("#platform").onchange = () => drawPlatform($("#platform").value);
+drawPlatform(/android/i.test(navigator.userAgent) ? "android" : "iphone");
+
+const colors = ["#c45c26", "#8a5a44", "#3e5344", "#243044", "#7a3048", "#2f5d62"];
+function paintPerson(row, i) {
+  state.people[row.id] = {
+    name: row.display_name || row.email,
+    color: colors[i % colors.length],
+    status: row.status || "",
+    bio: row.bio || ""
+  };
+}
+async function loadFamily() {
+  const [{ data: users }, { data: posts }, { data: asks }, { data: responses }, { data: events }, { data: rsvps }] = await Promise.all([
+    sb.from("users").select("*"),
+    sb.from("posts").select("*").order("created_at", { ascending: false }),
+    sb.from("asks").select("*").order("created_at", { ascending: false }),
+    sb.from("ask_responses").select("*"),
+    sb.from("events").select("*").order("starts_at"),
+    sb.from("event_rsvps").select("*")
+  ]);
+  state.people = {};
+  (users || []).forEach(paintPerson);
+  const byParent = {};
+  (posts || []).filter(p => p.parent_id).forEach(p => {
+    (byParent[p.parent_id] ||= []).push({ author: p.author_id, body: p.body || "" });
+  });
+  state.posts = (posts || []).filter(p => !p.parent_id).map(p => ({
+    id: p.id, author: p.author_id, body: p.body || "", ig: p.instagram_url || "", created: Date.parse(p.created_at), replies: byParent[p.id] || []
+  }));
+  const respMap = {};
+  (responses || []).forEach(r => { (respMap[r.ask_id] ||= {})[r.user_id] = r.response; });
+  state.asks = (asks || []).map(a => ({
+    id: a.id, from: a.from_user_id, message: a.message, created: Date.parse(a.created_at), expires: Date.parse(a.expires_at), responses: respMap[a.id] || {}
+  }));
+  const rsvpMap = {};
+  (rsvps || []).forEach(r => { (rsvpMap[r.event_id] ||= {})[r.user_id] = r.status; });
+  state.events = (events || []).map(e => ({
+    id: e.id, title: e.title, creator: e.creator_id, starts: e.starts_at, location: e.location || "", website: e.website || "", color: e.color, banner: e.banner_url || "", rsvps: rsvpMap[e.id] || {}
+  }));
+}
+async function ensureProfile() {
+  const email = session.user.email;
+  const { data: existing } = await sb.from("users").select("*").eq("email", email).maybeSingle();
+  if (existing) { state.me = existing.id; return; }
+  const name = session.user.user_metadata.full_name || email.split("@")[0];
+  const { data, error } = await sb.from("users").insert({
+    google_sub: session.user.id,
+    email,
+    display_name: name
+  }).select().single();
+  if (error) throw error;
+  state.me = data.id;
+}
+async function enterApp() {
+  await ensureProfile();
+  await loadFamily();
+  $("#door").classList.remove("on");
+  render();
+}
+$("#magicBtn").onclick = async () => {
+  const email = $("#magicEmail").value.trim();
+  if (!email) return;
+  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: "https://anthonyznft.github.io/zuniga_hub/" } });
+  $("#authMsg").textContent = error ? error.message : "Check that inbox for the link.";
+};
+$("#googleBtn").onclick = async () => {
+  const { error } = await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: "https://anthonyznft.github.io/zuniga_hub/" } });
+  if (error) $("#authMsg").textContent = error.message;
+};
+sb.auth.getSession().then(async ({ data }) => {
+  session = data.session;
+  if (!session) return;
+  try { await enterApp(); } catch (err) { $("#authMsg").textContent = err.message; $("#door").classList.add("on"); }
+});
+sb.auth.onAuthStateChange(async (_event, next) => {
+  session = next;
+  if (session) {
+    try { await enterApp(); } catch (err) { alert(err.message); }
+  }
+});
 </script>
 </body>
 </html>
