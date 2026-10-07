@@ -8,10 +8,13 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Zuniga" />
 <title>Zuniga</title>
+<meta name="description" content="A private home for the Zuniga family." />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon-180.png" />
 <link rel="apple-touch-icon" href="icon-180.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,620&family=Outfit:wght@380;480;560&family=UnifrakturMaguntia&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,620&family=Outfit:wght@380;480;560&display=swap" rel="stylesheet" />
 <style>
   :root {
     --bg: #f3eee6;
@@ -272,6 +275,38 @@
   .door .pill { width: 100%; padding: 12px 14px; }
   .door .ghost { color: #cfc6ba; width: 100%; }
 
+
+  /* ---- additions ---- */
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button:disabled { opacity: .55; cursor: default; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+  .door { overflow-y: auto; }
+  .door.on { display: flex; }
+  .door-card { margin: auto; }
+  .link-btn { border: 0; background: transparent; padding: 0; color: var(--accent); text-decoration: underline; font-size: inherit; }
+  .meta .del { margin-left: auto; }
+  .del { color: var(--muted); }
+  .body a, .event a, #panel a { color: var(--accent); word-break: break-word; }
+  a.embed { display: block; color: inherit; text-decoration: none; word-break: break-word; }
+  textarea { max-height: 220px; }
+  .day.today:not(.sel) { outline: 1.5px solid var(--accent); outline-offset: -2px; }
+  .day-head { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 12px 0 2px; }
+  .day-head:first-child { margin-top: 0; }
+  .event.past { opacity: .6; }
+  .card.note { display: block; width: 100%; text-align: left; cursor: pointer; }
+  .card.note.unread { outline: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+  .suggest-list button:hover, .suggest-list button:focus-visible { background: var(--bg-2); }
+  .toast {
+    position: fixed; left: 50%; bottom: calc(var(--nav-h) + var(--safe-b) + 14px);
+    transform: translateX(-50%) translateY(8px); z-index: 50;
+    max-width: min(440px, 90vw); padding: 10px 16px; border-radius: 999px;
+    background: var(--ink); color: var(--bg); font-size: 13px; text-align: center;
+    opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease;
+  }
+  .toast.on { opacity: 1; transform: translateX(-50%); }
+  .toast.bad { background: #a33a2a; color: #fff; }
 </style>
 </head>
 <body>
@@ -285,7 +320,7 @@
         <p>Family only</p>
       </div>
     </div>
-    <button class="icon-btn" id="composeOpen">New</button>
+    <button class="icon-btn" id="composeOpen" aria-label="Create something new">New</button>
   </header>
   <main>
     <section class="screen on" id="feed"></section>
@@ -294,7 +329,7 @@
     <section class="screen" id="me"></section>
     <section class="screen" id="settings"></section>
   </main>
-  <nav class="tab">
+  <nav class="tab" aria-label="Main">
     <button data-tab="feed" class="on">Feed<span class="dot"></span></button>
     <button data-tab="notes">Notes<span class="dot"></span></button>
     <button data-tab="events">Events<span class="dot"></span></button>
@@ -302,339 +337,569 @@
   </nav>
 </div>
 
-<div class="setup" id="setup"><div class="panel" id="setupPanel"></div></div>
-<div class="door" id="door">
+<div class="setup" id="setup" role="dialog" aria-modal="true" aria-label="Welcome"><div class="panel" id="setupPanel"></div></div>
+<div class="door" id="door" role="dialog" aria-modal="true" aria-label="Welcome to Zuniga">
   <div class="door-card">
     <img src="icon-512.png" alt="" />
     <h2>Zuniga</h2>
-    <p class="lead">A private home for the Zunigas. Add it to the phone, then open it from the icon.</p>
-    <label class="lead" for="platform" style="display:block;text-align:left;font-size:13px;margin:0 0 6px">Your phone</label>
-    <select id="platform">
-      <option value="iphone">iPhone</option>
-      <option value="android">Android</option>
-    </select>
-    <ol class="steps" id="platformSteps"></ol>
-    <button class="pill" id="doorHide">Look around first</button>
-    <button class="ghost" id="doorLater">Not today</button>
+    <p class="lead">A private home for the Zunigas.</p>
+    <div id="installBox">
+      <p class="lead">Add it to the phone, then open it from the icon.</p>
+      <label class="lead" for="platform" style="display:block;text-align:left;font-size:13px;margin:0 0 6px">Your phone</label>
+      <select id="platform">
+        <option value="iphone">iPhone</option>
+        <option value="android">Android</option>
+      </select>
+      <ol class="steps" id="platformSteps"></ol>
+      <button class="pill" id="doorHide">Look around first</button>
+      <button class="ghost" id="doorLater">Not today</button>
+    </div>
     <div id="signBox" style="margin-top:18px">
       <p class="lead" style="margin-bottom:8px">Sign in with the email on the family list.</p>
-      <input id="magicEmail" class="field" type="email" placeholder="Email" style="background:#141210;color:#f4efe7;border:1px solid rgba(244,239,231,.2)" />
+      <input id="magicEmail" class="field" type="email" autocomplete="email" placeholder="Email" aria-label="Email" style="background:#141210;color:#f4efe7;border:1px solid rgba(244,239,231,.2)" />
       <button class="pill" id="googleBtn" style="margin-bottom:8px">Continue with Google</button>
       <button class="ghost" id="magicBtn">Email me a link instead</button>
-      <p class="lead" id="authMsg" style="min-height:1.2em"></p>
+      <p class="lead" id="authMsg" style="min-height:1.2em" role="status"></p>
+      <button class="ghost" id="signClose" hidden>Not now</button>
     </div>
   </div>
 </div>
 <div class="sheet" id="sheet">
-  <div class="panel" id="panel"></div>
+  <div class="panel" id="panel" role="dialog" aria-modal="true"></div>
 </div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const $ = (s, r=document) => r.querySelector(s);
-const $$ = (s, r=document) => [...r.querySelectorAll(s)];
-const KEY = "zuniga-hub-v1";
+"use strict";
+/* ---------- basics ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const KEY = "zuniga-hub-v2";
+const OLD_KEY = "zuniga-hub-v1";
+const DAY = 864e5, HOUR = 36e5;
+const SUPABASE_URL = "https://zjaveayndgynoihmclab.supabase.co";
+const SUPABASE_KEY = "sb_publishable_skQwFelA7mkaAEz4j1Oo2g_omzifsSR";
+const REDIRECT = location.origin + location.pathname.replace(/index\.html$/, "");
+const EVENT_COLORS = ["#c45c26", "#3e5344", "#243044", "#a57a2d", "#7a3048", "#2f5d62"];
+const PERSON_COLORS = ["#c45c26", "#8a5a44", "#3e5344", "#243044", "#7a3048", "#2f5d62"];
+const FAMILY_PLACES = [
+  "Grandma's house, Anaheim, CA",
+  "Devonshire Street, Anaheim, CA",
+  "Yorba Linda, CA",
+  "Legoland California, Carlsbad, CA",
+  "Las Vegas, NV",
+  "Zion National Park, UT"
+];
+const ASK_IDEAS = ["What are you doing today?", "Anyone free this weekend?", "Dinner tonight?", "Who's around Sunday?"];
 
-const seed = () => ({
-  me: "anthony",
-  theme: "system",
-  accent: "clay",
-  settings: { replies: true, events: true, reminders: true, digest: false, cap: 3 },
-  people: {
-    anthony: { name: "Anthony", color: "#c45c26", status: "Building the family hub", bio: "Yorba Linda" },
-    kaity: { name: "Kaity", color: "#8a5a44", status: "Phone memory is a war", bio: "Home" },
-    brother: { name: "Brother", color: "#3e5344", status: "Around", bio: "Anaheim roots" },
-    sister: { name: "Sister", color: "#243044", status: "Out today", bio: "Family" }
-  },
-  posts: [
-    { id: "p1", author: "kaity", body: "Phone is full again. If this hub ever holds photos, I am first in line.", created: Date.now() - 3600e3, replies: [{ author: "anthony", body: "Vault is next. Feed first." }] },
-    { id: "p2", author: "brother", body: "Sunday at grandma’s if anyone is free.", image: true, created: Date.now() - 86400e3, replies: [] },
-    { id: "p3", author: "anthony", body: "Dropped the Legoland reel here so it is not only on Instagram.", ig: "https://instagram.com/p/example", created: Date.now() - 172800e3, replies: [] }
-  ],
-  asks: [
-    { id: "a1", from: "anthony", message: "What are you doing today?", created: Date.now() - 5400e3, expires: Date.now() + 18*3600e3, responses: { kaity: "later" } }
-  ],
-  events: [
-    { id: "e1", title: "Grandma Sunday", creator: "brother", starts: nextDow(0, 13), location: "Anaheim, CA", website: "", color: "#3e5344", banner: "", rsvps: { anthony: "going", kaity: "maybe" } }
-  ],
-  notes: [
-    { id: "n1", type: "ask", text: "Anthony asked: What are you doing today?", time: Date.now() - 5400e3, read: false },
-    { id: "n2", type: "reply", text: "Kaity replied to your post", time: Date.now() - 3500e3, read: false }
-  ],
-  askLog: {},
-  setupDone: false
-});
-
-function nextDow(day, hour) {
-  const d = new Date();
-  const diff = (day + 7 - d.getDay()) % 7 || 7;
-  d.setDate(d.getDate() + diff);
-  d.setHours(hour, 0, 0, 0);
-  return d.toISOString();
+/* ---------- safe output ---------- */
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const safeColor = (c, fb = "#c45c26") => /^#[0-9a-f]{6}$/i.test(c || "") ? c : fb;
+const normalizeUrl = u => { u = String(u || "").trim(); return !u ? "" : /^[a-z][a-z0-9+.-]*:\/\//i.test(u) ? u : "https://" + u; };
+function safeUrl(u) {
+  try { const x = new URL(normalizeUrl(u)); return /^https?:$/.test(x.protocol) ? x.href : ""; } catch { return ""; }
 }
+function instagramUrl(u) {
+  const href = safeUrl(u);
+  if (!href) return "";
+  const h = new URL(href).hostname.replace(/^www\./, "");
+  return h === "instagram.com" || h.endsWith(".instagram.com") ? href : "";
+}
+function safeBannerUrl(u) {
+  if (!u) return "";
+  if (/^data:image\/(jpeg|png|webp|gif);base64,[a-z0-9+/=]+$/i.test(u)) return u;
+  return safeUrl(u).replace(/['"()\\\s]/g, c => encodeURIComponent(c));
+}
+function rich(text) {
+  return String(text || "").split(/(https?:\/\/[^\s<]+)/g).map((part, i) => {
+    if (i % 2 === 0) return esc(part);
+    const m = part.match(/^(.*?)([.,!?)\]]*)$/);
+    const href = safeUrl(m[1]);
+    return href ? `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(m[1])}</a>${esc(m[2])}` : esc(part);
+  }).join("");
+}
+const clip = (s, n) => s.length > n ? s.slice(0, n - 1) + "…" : s;
 
-let state = JSON.parse(localStorage.getItem(KEY) || "null") || seed();
-state.posts = [];
-state.asks = [];
-state.events = [];
-state.notes = [];
-state.people = {};
-const sb = window.supabase.createClient(
-  "https://zjaveayndgynoihmclab.supabase.co",
-  "sb_publishable_skQwFelA7mkaAEz4j1Oo2g_omzifsSR",
-  { auth: { detectSessionInUrl: true, persistSession: true, flowType: "pkce" } }
-);
+/* ---------- state ---------- */
+const stored = (() => {
+  try { return JSON.parse(localStorage.getItem(KEY) || localStorage.getItem(OLD_KEY) || "null") || {}; } catch { return {}; }
+})();
+const defaultSettings = () => ({ replies: true, events: true, reminders: true, cap: 3 });
+const startOfDay = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+const dayEnd = d => { const x = startOfDay(d); x.setDate(x.getDate() + 1); return x; };
+const sameDay = (a, b) => startOfDay(a).getTime() === startOfDay(b).getTime();
+const state = {
+  me: null, people: {}, posts: [], asks: [], events: [], reminders: [],
+  loaded: false, loadError: "",
+  tab: "feed", feedLimit: 30,
+  theme: stored.theme || "system", accent: stored.accent || "clay",
+  settings: Object.assign(defaultSettings(), stored.settings || {}),
+  setupDone: !!stored.setupDone, calView: stored.calView || "month",
+  seenAt: stored.seenAt || 0, notesBaseline: 0,
+  cursor: startOfDay(new Date()), selectedDay: null, bannerCache: {}
+};
+const drafts = { post: "", ig: "", reply: {} };
+const save = () => {
+  try {
+    localStorage.setItem(KEY, JSON.stringify({
+      theme: state.theme, accent: state.accent, settings: state.settings,
+      setupDone: state.setupDone, calView: state.calView, seenAt: state.seenAt
+    }));
+  } catch {}
+};
+
+let sb = null;
+try {
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { detectSessionInUrl: true, persistSession: true, flowType: "pkce" }
+  });
+} catch {}
 let session = null;
-const save = () => localStorage.setItem(KEY, JSON.stringify({ theme: state.theme, accent: state.accent, settings: state.settings, setupDone: state.setupDone, tab: state.tab, calView: state.calView }));
+
 const person = id => state.people[id] || { name: "Family", color: "#c45c26", status: "", bio: "" };
-const initials = name => name.slice(0, 1);
-const ago = t => {
+const nm = id => esc(person(id).name);
+const initial = name => esc(Array.from(String(name || "?").trim())[0] || "?");
+const avatar = id => `<div class="av" style="background:${safeColor(person(id).color)}">${initial(person(id).name)}</div>`;
+const signedIn = () => !!session && !!state.me;
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const unwrap = ({ data, error }) => { if (error) throw error; return data; };
+
+function ago(t) {
   const s = Math.max(1, (Date.now() - t) / 1000);
   if (s < 60) return "just now";
-  if (s < 3600) return Math.floor(s/60) + "m";
-  if (s < 86400) return Math.floor(s/3600) + "h";
-  return Math.floor(s/86400) + "d";
-};
-const weekKey = () => {
-  const d = new Date();
-  const day = (d.getDay() + 6) % 7;
-  d.setDate(d.getDate() - day);
-  return d.toISOString().slice(0, 10);
-};
-const asksUsed = () => state.askLog[weekKey()] || 0;
+  if (s < 3600) return Math.floor(s / 60) + "m";
+  if (s < 86400) return Math.floor(s / 3600) + "h";
+  if (s < 7 * 86400) return Math.floor(s / 86400) + "d";
+  return new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+function until(t) {
+  const s = (t - Date.now()) / 1000;
+  if (s <= 0) return "expired";
+  if (s < 3600) return "in " + Math.max(1, Math.floor(s / 60)) + "m";
+  return "in " + Math.floor(s / 3600) + "h";
+}
+function weekStart() {
+  const d = startOfDay(new Date());
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d.getTime();
+}
+const asksUsed = () => state.asks.filter(a => a.from === state.me && a.created >= weekStart()).length;
+const toLocalInput = d => new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+const grow = el => { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 220) + "px"; };
+
+let toastTimer;
+function toast(msg, bad) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.className = "toast on" + (bad ? " bad" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = "toast"; }, 3800);
+}
+async function guarded(btn, fn) {
+  if (btn) btn.disabled = true;
+  try { await fn(); } catch (err) { toast((err && err.message) || String(err), true); }
+  finally { if (btn) btn.disabled = false; }
+}
 
 function applyTheme() {
-  const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
-  const mode = state.theme === "system" ? (prefersDark ? "dark" : "light") : state.theme;
-  document.documentElement.dataset.theme = mode;
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.dataset.theme = state.theme === "system" ? (dark ? "dark" : "light") : state.theme;
   document.documentElement.dataset.accent = state.accent;
 }
 applyTheme();
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
 
-function notify(text, type) {
-  if (type === "reply" && !state.settings.replies) return;
-  if ((type === "event" || type === "reminder") && !state.settings.events && type !== "reminder") return;
-  if (type === "reminder" && !state.settings.reminders) return;
-  state.notes.unshift({ id: "n" + Date.now(), type, text, time: Date.now(), read: false });
+/* ---------- data ---------- */
+let loading = null;
+function loadFamily() {
+  if (!sb || !session) return Promise.resolve();
+  if (loading) return loading;
+  loading = (async () => {
+    try {
+      const res = await Promise.all([
+        sb.from("users").select("*").order("created_at"),
+        sb.from("posts").select("id,author_id,parent_id,body,instagram_url,created_at").order("created_at", { ascending: false }).limit(400),
+        sb.from("asks").select("id,from_user_id,message,created_at,expires_at").order("created_at", { ascending: false }).limit(100),
+        sb.from("ask_responses").select("*"),
+        sb.from("events").select("id,creator_id,title,starts_at,location,website,color,created_at").order("starts_at"),
+        sb.from("event_rsvps").select("*"),
+        sb.from("event_reminders").select("*").order("sent_at", { ascending: false }).limit(100)
+      ]);
+      const hard = res.slice(0, 6).find(r => r.error);
+      if (hard) throw hard.error;
+      const [users, posts, asks, responses, events, rsvps, reminders] = res.map(r => r.data || []);
+
+      state.people = {};
+      users.forEach((u, i) => {
+        state.people[u.id] = { name: u.display_name || u.email, color: PERSON_COLORS[i % PERSON_COLORS.length], status: u.status || "", bio: u.bio || "" };
+      });
+
+      const byParent = {};
+      posts.filter(p => p.parent_id).sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at)).forEach(p => {
+        (byParent[p.parent_id] ||= []).push({ id: p.id, author: p.author_id, body: p.body || "", created: Date.parse(p.created_at) });
+      });
+      state.posts = posts.filter(p => !p.parent_id).map(p => ({
+        id: p.id, author: p.author_id, body: p.body || "", ig: p.instagram_url || "",
+        created: Date.parse(p.created_at), replies: byParent[p.id] || []
+      }));
+
+      const respMap = {};
+      responses.forEach(r => { (respMap[r.ask_id] ||= {})[r.user_id] = r.response; });
+      state.asks = asks.map(a => ({
+        id: a.id, from: a.from_user_id, message: a.message,
+        created: Date.parse(a.created_at), expires: Date.parse(a.expires_at), responses: respMap[a.id] || {}
+      }));
+
+      const rsvpMap = {}, rsvpTimes = {};
+      rsvps.forEach(r => {
+        (rsvpMap[r.event_id] ||= {})[r.user_id] = r.status;
+        (rsvpTimes[r.event_id] ||= {})[r.user_id] = Date.parse(r.updated_at || "") || 0;
+      });
+      state.events = events.map(e => ({
+        id: e.id, title: e.title, creator: e.creator_id, starts: Date.parse(e.starts_at),
+        created: Date.parse(e.created_at) || 0, location: e.location || "", website: e.website || "",
+        color: e.color, rsvps: rsvpMap[e.id] || {}, rsvpTimes: rsvpTimes[e.id] || {}
+      }));
+
+      state.reminders = res[6].error ? [] : reminders.map(r => ({ event: r.event_id, by: r.sent_by, at: Date.parse(r.sent_at) || 0 }));
+      state.loadError = "";
+    } catch (err) {
+      state.loadError = (err && err.message) || "Couldn't reach the family server.";
+    } finally {
+      state.loaded = true;
+      loading = null;
+    }
+  })();
+  return loading;
 }
 
+function resetData() {
+  Object.assign(state, { me: null, people: {}, posts: [], asks: [], events: [], reminders: [], loaded: false, loadError: "" });
+}
+
+async function ensureProfile() {
+  const email = session.user.email.toLowerCase();
+  const found = unwrap(await sb.from("users").select("*").eq("email", email).maybeSingle());
+  if (found) { state.me = found.id; return; }
+  const name = (session.user.user_metadata && (session.user.user_metadata.full_name || session.user.user_metadata.name)) || email.split("@")[0];
+  const row = unwrap(await sb.from("users").insert({ google_sub: session.user.id, email, display_name: name }).select().single());
+  state.me = row.id;
+}
+
+/* ---------- notes (built from real data) ---------- */
+function buildNotes() {
+  const me = state.me;
+  if (!me) return [];
+  const cutoff = Date.now() - 14 * DAY, s = state.settings, out = [];
+  if (s.replies) {
+    state.posts.filter(p => p.author === me).forEach(p => p.replies.forEach(r => {
+      if (r.author !== me && r.created > cutoff) out.push({ label: "Reply", tab: "feed", time: r.created, text: `${person(r.author).name} replied: ${clip(r.body, 100)}` });
+    }));
+  }
+  state.asks.forEach(a => {
+    if (a.from !== me && a.created > cutoff) {
+      const mine = a.responses[me];
+      out.push({ label: "Ask", tab: "feed", time: a.created, text: `${person(a.from).name} asked: ${a.message}${mine ? ` (you said ${mine})` : ""}` });
+    }
+  });
+  if (s.events) {
+    state.events.forEach(e => {
+      if (e.creator !== me && e.created > cutoff && e.starts > Date.now() - DAY) {
+        out.push({ label: "Invite", tab: "events", time: e.created, text: `${person(e.creator).name} invited the family to ${e.title}` });
+      }
+      if (e.creator === me) {
+        Object.entries(e.rsvps).forEach(([uid, st]) => {
+          const t = e.rsvpTimes[uid] || 0;
+          if (uid === me || t < cutoff) return;
+          const verb = st === "going" ? "is going to" : st === "maybe" ? "might come to" : "can't make";
+          out.push({ label: "RSVP", tab: "events", time: t, text: `${person(uid).name} ${verb} ${e.title}` });
+        });
+      }
+    });
+  }
+  if (s.reminders) {
+    state.reminders.forEach(r => {
+      const e = state.events.find(x => x.id === r.event);
+      if (e && r.by !== me && r.at > cutoff && !e.rsvps[me] && e.starts > Date.now() - DAY) {
+        out.push({ label: "Reminder", tab: "events", time: r.at, text: `${person(r.by).name} is waiting on your RSVP for ${e.title}` });
+      }
+    });
+  }
+  return out.sort((a, b) => b.time - a.time).slice(0, 50);
+}
+function updateDot() {
+  const unread = state.tab === "notes" ? 0 : buildNotes().filter(n => n.time > state.seenAt).length;
+  $("[data-tab=notes]").classList.toggle("has", unread > 0);
+}
+
+/* ---------- shared bits ---------- */
+const signedOutPrompt = msg => `<div class="empty">${esc(msg)}<br><button class="pill" data-act="signin" style="margin-top:12px">Sign in</button></div>`;
+function needSignIn() { showDoor("signin"); }
+
+/* ---------- feed ---------- */
 function renderFeed() {
-  const used = asksUsed();
-  const cap = state.settings.cap;
+  const used = asksUsed(), cap = state.settings.cap;
   const liveAsks = state.asks.filter(a => a.expires > Date.now());
+  const posts = state.posts.slice().sort((a, b) => b.created - a.created);
+  const shown = posts.slice(0, state.feedLimit);
+
+  let banner = "";
+  if (!session) banner = `<div class="banner">You're looking around. <button class="link-btn" data-act="signin">Sign in</button> to see and share family posts.</div>`;
+  else if (state.loadError) banner = `<div class="banner">Couldn't refresh: ${esc(state.loadError)} <button class="link-btn" data-act="retry">Retry</button></div>`;
+  else if (!state.loaded) banner = `<div class="banner">Loading…</div>`;
+
+  const askCard = a => {
+    const answered = Object.entries(a.responses).map(([id, r]) => `${nm(id)}: ${esc(r)}`).join(" · ");
+    return `<article class="card ask">
+      <div class="meta">${avatar(a.from)}<div><strong>${nm(a.from)} asked</strong><div class="time">${ago(a.created)} · expires ${until(a.expires)}</div></div></div>
+      <p class="body">${esc(a.message)}</p>
+      <div class="chips">${["in", "later", "out"].map(k => `<button class="chip ${a.responses[state.me] === k ? "on" : ""}" data-ask="${esc(a.id)}" data-resp="${k}">${k}</button>`).join("")}</div>
+      ${answered ? `<div class="time" style="margin-top:8px">${answered}</div>` : ""}
+    </article>`;
+  };
+  const postCard = p => {
+    const ig = p.ig ? instagramUrl(p.ig) : "";
+    return `<article class="card">
+      <div class="meta">${avatar(p.author)}<div><strong>${nm(p.author)}</strong><div class="time">${ago(p.created)}</div></div>
+        ${p.author === state.me ? `<button class="ghost del" data-del-post="${esc(p.id)}" aria-label="Delete post">Delete</button>` : ""}</div>
+      ${p.body ? `<p class="body">${rich(p.body)}</p>` : ""}
+      ${ig ? `<a class="embed" href="${esc(ig)}" target="_blank" rel="noopener noreferrer"><b>Instagram</b>${esc(new URL(ig).pathname.replace(/\/$/, "") || ig)}<div class="time">Opens in Instagram</div></a>` : ""}
+      ${p.replies.length ? `<div class="replies">${p.replies.map(r => `<p><strong>${nm(r.author)}</strong> ${rich(r.body)}${r.author === state.me ? ` <button class="link-btn del" data-del-reply="${esc(r.id)}" aria-label="Delete reply">×</button>` : ""}</p>`).join("")}</div>` : ""}
+      <div class="reply-box"><input data-reply="${esc(p.id)}" placeholder="Reply" aria-label="Reply" maxlength="500" /><button class="pill" data-send="${esc(p.id)}">Send</button></div>
+    </article>`;
+  };
+
   $("#feed").innerHTML = `
-    <div class="banner">Signed-in posts are shared. Push and Instagram embeds are not on yet.</div>
+    ${banner}
     <div class="composer">
-      <div class="av" style="background:${person(state.me).color}">${initials(person(state.me).name)}</div>
+      ${avatar(state.me)}
       <div style="flex:1">
-        <textarea id="postBody" placeholder="A life update, not a highlight reel"></textarea>
-        <input id="igLink" type="text" placeholder="Paste an Instagram link (optional)" />
+        <textarea id="postBody" placeholder="A life update, not a highlight reel" aria-label="Post" maxlength="2000"></textarea>
+        <input id="igLink" type="text" inputmode="url" placeholder="Paste an Instagram link (optional)" aria-label="Instagram link" />
         <div class="actions">
           <button class="ghost" id="askBtn">Ask family · ${used}/${cap} this week</button>
           <button class="pill" id="postBtn">Share</button>
         </div>
       </div>
     </div>
-    ${liveAsks.map(a => `
-      <article class="card ask">
-        <div class="meta"><div class="av" style="background:${person(a.from).color}">${initials(person(a.from).name)}</div>
-          <div><strong>${person(a.from).name} asked</strong><div class="time">${ago(a.created)} · expires ${ago(a.expires).replace("just now","soon")}</div></div></div>
-        <p class="body">${escapeHtml(a.message)}</p>
-        <div class="chips">
-          ${["in","later","out"].map(k => `<button class="chip ${a.responses[state.me]===k?"on":""}" data-ask="${a.id}" data-resp="${k}">${k}</button>`).join("")}
-        </div>
-      </article>`).join("")}
-    ${state.posts.slice().sort((a,b)=>b.created-a.created).map(p => `
-      <article class="card">
-        <div class="meta"><div class="av" style="background:${person(p.author).color}">${initials(person(p.author).name)}</div>
-          <div><strong>${person(p.author).name}</strong><div class="time">${ago(p.created)}</div></div></div>
-        ${p.body ? `<p class="body">${escapeHtml(p.body)}</p>` : ""}
-        ${p.image ? `<div class="photo">Photo · stays on this phone for now</div>` : ""}
-        ${p.ig ? `<div class="embed"><b>Instagram</b>${escapeHtml(p.ig)}<div class="time">Embed caches here once a server calls oEmbed.</div></div>` : ""}
-        <div class="replies">${(p.replies||[]).map(r => `<p><strong>${person(r.author).name}</strong> ${escapeHtml(r.body)}</p>`).join("")}</div>
-        <div class="reply-box"><input data-reply="${p.id}" placeholder="Reply" /><button class="pill" data-send="${p.id}">Send</button></div>
-      </article>`).join("")}
+    ${liveAsks.map(askCard).join("")}
+    ${shown.map(postCard).join("")}
+    ${session && state.loaded && !state.loadError && !posts.length && !liveAsks.length ? `<div class="empty">Quiet so far. Share a life update to start the feed.</div>` : ""}
+    ${posts.length > shown.length ? `<button class="ghost" id="moreBtn" style="width:100%">Show older</button>` : ""}
   `;
-  $("#postBtn").onclick = async () => {
-    if (!session) return alert("Sign in first.");
-    const body = $("#postBody").value.trim();
-    const ig = $("#igLink").value.trim();
-    if (!body && !ig) return;
-    const { error } = await sb.from("posts").insert({ author_id: state.me, body: body || null, instagram_url: ig || null });
-    if (error) return alert(error.message);
-    await loadFamily();
-    render();
-  };
-  $("#askBtn").onclick = async () => {
-    if (!session) return alert("Sign in first.");
-    if (asksUsed() >= state.settings.cap) return alert("Weekly ask cap reached. It resets Monday.");
-    const message = prompt("Ask the family", "What are you doing today?");
-    if (!message) return;
-    const { error } = await sb.from("asks").insert({ from_user_id: state.me, message });
-    if (error) return alert(error.message);
-    state.askLog[weekKey()] = asksUsed() + 1;
-    await loadFamily();
-    render();
-  };
-  $$("[data-resp]").forEach(b => b.onclick = async () => {
-    if (!session) return;
-    const { error } = await sb.from("ask_responses").upsert({ ask_id: b.dataset.ask, user_id: state.me, response: b.dataset.resp });
-    if (error) return alert(error.message);
-    await loadFamily();
-    render();
+
+  const pb = $("#postBody"), ig = $("#igLink");
+  pb.value = drafts.post; ig.value = drafts.ig; grow(pb);
+  pb.oninput = () => { drafts.post = pb.value; grow(pb); };
+  ig.oninput = () => { drafts.ig = ig.value; };
+  $$("[data-reply]").forEach(i => {
+    i.value = drafts.reply[i.dataset.reply] || "";
+    i.oninput = () => { drafts.reply[i.dataset.reply] = i.value; };
+    i.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $(`[data-send="${i.dataset.reply}"]`).click(); } };
   });
-  $$("[data-send]").forEach(b => b.onclick = async () => {
-    const input = $(`[data-reply="${b.dataset.send}"]`);
-    const text = input.value.trim();
-    if (!text || !session) return;
-    const { error } = await sb.from("posts").insert({ author_id: state.me, parent_id: b.dataset.send, body: text });
-    if (error) return alert(error.message);
+
+  $("#postBtn").onclick = e => guarded(e.currentTarget, async () => {
+    if (!signedIn()) return needSignIn();
+    const body = drafts.post.trim();
+    let link = drafts.ig.trim();
+    if (!body && !link) return;
+    if (link) {
+      link = instagramUrl(link);
+      if (!link) throw new Error("That doesn't look like an Instagram link.");
+    }
+    unwrap(await sb.from("posts").insert({ author_id: state.me, body: body || null, instagram_url: link || null }));
+    drafts.post = ""; drafts.ig = "";
+    await loadFamily(); render();
+  });
+  $("#askBtn").onclick = () => { if (!signedIn()) return needSignIn(); openSheet("ask"); };
+  $$("[data-resp]").forEach(b => b.onclick = () => guarded(b, async () => {
+    if (!signedIn()) return needSignIn();
+    unwrap(await sb.from("ask_responses").upsert({ ask_id: b.dataset.ask, user_id: state.me, response: b.dataset.resp }));
+    await loadFamily(); render();
+  }));
+  $$("[data-send]").forEach(b => b.onclick = () => guarded(b, async () => {
+    if (!signedIn()) return needSignIn();
+    const id = b.dataset.send, text = (drafts.reply[id] || "").trim();
+    if (!text) return;
+    unwrap(await sb.from("posts").insert({ author_id: state.me, parent_id: id, body: text }));
+    delete drafts.reply[id];
+    await loadFamily(); render();
+  }));
+  $$("[data-del-post]").forEach(b => b.onclick = () => deleteRow(b, "posts", b.dataset.delPost, "Delete this post and its replies?"));
+  $$("[data-del-reply]").forEach(b => b.onclick = () => deleteRow(b, "posts", b.dataset.delReply, "Delete this reply?"));
+  const more = $("#moreBtn");
+  if (more) more.onclick = () => { state.feedLimit += 30; render(); };
+}
+
+function deleteRow(btn, table, id, question, after) {
+  if (!confirm(question)) return;
+  return guarded(btn, async () => {
+    const rows = unwrap(await sb.from(table).delete().eq("id", id).select("id"));
+    if (!rows || !rows.length) throw new Error("The server didn't allow that delete.");
     await loadFamily();
+    if (after) after();
     render();
   });
 }
 
+/* ---------- notes tab ---------- */
 function renderNotes() {
-  const items = state.notes;
-  $("#notes").innerHTML = items.length ? items.map(n => `
-    <article class="card" style="${n.read?"":"outline:1px solid color-mix(in srgb, var(--accent) 40%, transparent)"}">
-      <strong>${n.type}</strong>
-      <p class="body">${escapeHtml(n.text)}</p>
-      <div class="time">${ago(n.time)}</div>
-    </article>`).join("") : `<div class="empty">Nothing waiting. Replies, asks, invites, and reminders land here.</div>`;
-  state.notes.forEach(n => n.read = true);
-  save();
+  const items = buildNotes(), base = state.notesBaseline;
+  $("#notes").innerHTML = !session ? signedOutPrompt("Sign in to see replies, asks and invites.")
+    : items.length ? items.map(n => `<button class="card note${n.time > base ? " unread" : ""}" data-goto="${n.tab}"><strong>${esc(n.label)}</strong><p class="body">${esc(n.text)}</p><div class="time">${ago(n.time)}</div></button>`).join("")
+    : `<div class="empty">Nothing waiting. Replies, asks, invites, and reminders land here.</div>`;
+  $$("[data-goto]", $("#notes")).forEach(b => b.onclick = () => go(b.dataset.goto));
+  state.seenAt = Date.now();
 }
 
-const EVENT_COLORS = ["#c45c26", "#3e5344", "#243044", "#a57a2d", "#7a3048", "#2f5d62"];
-const FAMILY_PLACES = [
-  "Grandma's house, Anaheim, CA",
-  "Devonshire Street, Anaheim, CA",
-  "4703 Via La Primavera, Yorba Linda, CA",
-  "Yorba Linda, CA",
-  "Legoland California, Carlsbad, CA",
-  "Las Vegas, NV",
-  "Zion National Park, UT"
-];
-
-function eventsOn(date) {
-  return state.events.filter(e => {
-    const d = new Date(e.starts);
-    return d.getFullYear() === date.getFullYear() && d.getMonth() === date.getMonth() && d.getDate() === date.getDate();
-  });
+/* ---------- events ---------- */
+const eventsOn = date => { const s = startOfDay(date).getTime(), e = dayEnd(date).getTime(); return state.events.filter(ev => ev.starts >= s && ev.starts < e); };
+function rangeFor(view) {
+  const c = state.cursor;
+  if (view === "month") return [new Date(c.getFullYear(), c.getMonth(), 1), new Date(c.getFullYear(), c.getMonth() + 1, 1)];
+  if (view === "week") {
+    const s = startOfDay(c); s.setDate(s.getDate() - ((s.getDay() + 6) % 7));
+    const e = new Date(s); e.setDate(e.getDate() + 7);
+    return [s, e];
+  }
+  return [startOfDay(c), dayEnd(c)];
+}
+function stepCursor(dir) {
+  const c = state.cursor, v = state.calView;
+  if (v === "month") {
+    const last = new Date(c.getFullYear(), c.getMonth() + dir + 1, 0).getDate();
+    state.cursor = new Date(c.getFullYear(), c.getMonth() + dir, Math.min(c.getDate(), last));
+    state.selectedDay = null;
+  } else {
+    const d = new Date(c); d.setDate(d.getDate() + dir * (v === "week" ? 7 : 1));
+    state.cursor = d;
+  }
 }
 
 function renderEvents() {
-  const view = state.calView || "month";
-  const cursor = new Date(state.cursor || new Date().toISOString());
-  const label = cursor.toLocaleString(undefined, { month: "long", year: "numeric" });
-  const days = ["M","T","W","T","F","S","S"];
-  const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
-  const startPad = (first.getDay() + 6) % 7;
-  const count = new Date(cursor.getFullYear(), cursor.getMonth()+1, 0).getDate();
-  const cells = [...Array(startPad).fill(null), ...Array.from({length: count}, (_,i)=>i+1)];
-  let list = state.events.slice().sort((a,b)=> new Date(a.starts)-new Date(b.starts));
-  if (view === "week") {
-    const start = new Date(cursor);
-    const pad = (start.getDay() + 6) % 7;
-    start.setDate(start.getDate() - pad);
-    start.setHours(0,0,0,0);
-    const end = new Date(start); end.setDate(end.getDate() + 7);
-    list = list.filter(e => { const t = new Date(e.starts); return t >= start && t < end; });
-  }
-  if (view === "day") {
-    const day = state.selectedDay ? new Date(state.selectedDay) : cursor;
-    list = eventsOn(day);
-  }
+  const view = state.calView, c = state.cursor;
+  const [from, to] = rangeFor(view);
+  let list = state.events.filter(e => e.starts >= from.getTime() && e.starts < to.getTime()).sort((a, b) => a.starts - b.starts);
+  const picked = view === "month" && state.selectedDay;
+  if (picked) { const s = startOfDay(state.selectedDay).getTime(), e = dayEnd(state.selectedDay).getTime(); list = list.filter(ev => ev.starts >= s && ev.starts < e); }
+
+  const label = view === "month" ? c.toLocaleString(undefined, { month: "long", year: "numeric" })
+    : view === "week" ? `${from.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${new Date(to - DAY).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+    : c.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+
+  const first = new Date(c.getFullYear(), c.getMonth(), 1);
+  const pad = (first.getDay() + 6) % 7;
+  const count = new Date(c.getFullYear(), c.getMonth() + 1, 0).getDate();
+  const cells = [...Array(pad).fill(null), ...Array.from({ length: count }, (_, i) => i + 1)];
+  const today = new Date();
+
+  const row = e => {
+    const when = new Date(e.starts), past = e.starts < Date.now() - 3 * HOUR;
+    const pending = Object.keys(state.people).filter(id => id !== state.me && !e.rsvps[id]);
+    return `<div class="event${past ? " past" : ""}" style="border-left:4px solid ${safeColor(e.color)}; padding-left:10px">
+      <button class="ghost" data-open="${esc(e.id)}" style="padding:0;font-weight:560;color:var(--ink);text-align:left">${esc(e.title)}</button>
+      <div class="time">${when.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}${e.location ? " · " + esc(e.location) : ""}</div>
+      <div class="chips">
+        ${["going", "maybe", "no"].map(s => `<button class="chip ${e.rsvps[state.me] === s ? "on" : ""}" data-rsvp="${esc(e.id)}" data-status="${s}">${s}</button>`).join("")}
+        ${!past && pending.length ? `<button class="chip" data-remind="${esc(e.id)}">Remind ${pending.length} quiet</button>` : ""}
+      </div>
+      ${Object.keys(e.rsvps).length ? `<div class="who">${Object.entries(e.rsvps).map(([id, s]) => `<span class="time">${nm(id)}: ${esc(s)}</span>`).join("")}</div>` : ""}
+    </div>`;
+  };
+
+  const showHeads = view === "week" || (view === "month" && !picked);
+  const groups = [];
+  list.forEach(e => {
+    const k = startOfDay(e.starts).getTime();
+    let g = groups[groups.length - 1];
+    if (!g || g.k !== k) { g = { k, items: [] }; groups.push(g); }
+    g.items.push(e);
+  });
+  const empty = view === "day" || picked ? "Nothing on this day." : view === "week" ? "Nothing this week." : "Nothing this month.";
+
   $("#events").innerHTML = `
+    ${session ? "" : `<div class="banner">Sign in to see the family calendar. <button class="link-btn" data-act="signin">Sign in</button></div>`}
     <div class="cal-head">
-      <button class="ghost" id="prev">‹</button>
-      <strong>${label}</strong>
-      <button class="ghost" id="next">›</button>
+      <button class="ghost" id="prev" aria-label="Previous">‹</button>
+      <strong>${esc(label)}</strong>
+      <button class="ghost" id="next" aria-label="Next">›</button>
     </div>
-    <div class="seg" style="margin-bottom:12px">
-      ${["month","week","day"].map(v => `<button data-view="${v}" class="${view===v?"on":""}">${v}</button>`).join("")}
+    <div class="row" style="justify-content:space-between;margin-bottom:12px">
+      <div class="seg">${["month", "week", "day"].map(v => `<button data-view="${v}" class="${view === v ? "on" : ""}">${v}</button>`).join("")}</div>
+      <button class="ghost" id="today">Today</button>
     </div>
-    ${view==="month" ? `<div class="month">${days.map(d=>`<div class="dow">${d}</div>`).join("")}${cells.map(d => {
+    ${view === "month" ? `<div class="month">${["M", "T", "W", "T", "F", "S", "S"].map(d => `<div class="dow">${d}</div>`).join("")}${cells.map(d => {
       if (!d) return "<div></div>";
-      const hits = eventsOn(new Date(cursor.getFullYear(), cursor.getMonth(), d));
-      const sel = state.selectedDay && new Date(state.selectedDay).getDate()===d && new Date(state.selectedDay).getMonth()===cursor.getMonth();
-      return `<button class="day ${sel?"sel":""}" data-day="${d}">${d}<span class="dots">${hits.slice(0,3).map(e => `<i class="cal-dot" style="background:${e.color || "#c45c26"}"></i>`).join("")}</span></button>`;
+      const date = new Date(c.getFullYear(), c.getMonth(), d), hits = eventsOn(date);
+      const sel = state.selectedDay && sameDay(state.selectedDay, date), isToday = sameDay(today, date);
+      return `<button class="day ${sel ? "sel" : ""} ${isToday ? "today" : ""}" data-day="${d}" aria-label="${esc(date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }))}${hits.length ? `, ${hits.length} event${hits.length > 1 ? "s" : ""}` : ""}">${d}<span class="dots">${hits.slice(0, 3).map(e => `<i class="cal-dot" style="background:${safeColor(e.color)}"></i>`).join("")}</span></button>`;
     }).join("")}</div>` : ""}
+    ${picked ? `<div class="cal-head" style="margin:12px 0 0"><strong>${esc(state.selectedDay.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" }))}</strong><button class="ghost" id="clearDay">Whole month</button></div>` : ""}
     <div class="card" style="margin-top:12px;padding:12px 14px">
-      ${list.map(e => {
-        const when = new Date(e.starts);
-        const pending = Object.keys(state.people).filter(id => !e.rsvps[id]);
-        return `<div class="event" style="border-left:4px solid ${e.color || "#c45c26"}; padding-left:10px">
-          <button class="ghost" data-open="${e.id}" style="padding:0;font-weight:560;color:var(--ink)">${escapeHtml(e.title)}</button>
-          <div class="time">${when.toLocaleString(undefined,{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}${e.location?" · "+escapeHtml(e.location):""}</div>
-          <div class="chips">
-            ${["going","maybe","no"].map(s => `<button class="chip ${e.rsvps[state.me]===s?"on":""}" data-rsvp="${e.id}" data-status="${s}">${s}</button>`).join("")}
-            <button class="chip" data-remind="${e.id}">Remind ${pending.length} quiet</button>
-          </div>
-          <div class="who">${Object.entries(e.rsvps).map(([id,s]) => `<span class="time">${person(id).name}: ${s}</span>`).join("")}</div>
-        </div>`;
-      }).join("") || `<div class="empty">${view==="day"?"Nothing on this day.":"No events yet."}</div>`}
+      ${groups.map(g => `${showHeads ? `<div class="day-head">${esc(new Date(g.k).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }))}</div>` : ""}${g.items.map(row).join("")}`).join("") || `<div class="empty">${empty}</div>`}
     </div>
     <button class="pill" id="addEvent" style="margin-top:12px">Add invitation</button>
   `;
-  $("#prev").onclick = () => { cursor.setMonth(cursor.getMonth()-1); state.cursor = cursor.toISOString(); save(); render(); };
-  $("#next").onclick = () => { cursor.setMonth(cursor.getMonth()+1); state.cursor = cursor.toISOString(); save(); render(); };
-  $$("[data-view]").forEach(b => b.onclick = () => { state.calView = b.dataset.view; save(); render(); });
+  $("#prev").onclick = () => { stepCursor(-1); render(); };
+  $("#next").onclick = () => { stepCursor(1); render(); };
+  $("#today").onclick = () => { state.cursor = startOfDay(new Date()); state.selectedDay = null; render(); };
+  $$("[data-view]").forEach(b => b.onclick = () => { state.calView = b.dataset.view; render(); });
   $$("[data-day]").forEach(b => b.onclick = () => {
-    const d = new Date(cursor.getFullYear(), cursor.getMonth(), +b.dataset.day);
-    state.selectedDay = d.toISOString();
-    state.calView = "day";
-    save(); render();
-  });
-  $$("[data-open]").forEach(b => b.onclick = () => openSheet("view", b.dataset.open));
-  $$("[data-rsvp]").forEach(b => b.onclick = async () => {
-    if (!session) return alert("Sign in first.");
-    const { error } = await sb.from("event_rsvps").upsert({ event_id: b.dataset.rsvp, user_id: state.me, status: b.dataset.status });
-    if (error) return alert(error.message);
-    await loadFamily();
+    const d = new Date(c.getFullYear(), c.getMonth(), +b.dataset.day);
+    state.selectedDay = state.selectedDay && sameDay(state.selectedDay, d) ? null : d;
+    if (state.selectedDay) state.cursor = d;
     render();
   });
-  $$("[data-remind]").forEach(b => b.onclick = () => {
+  const clear = $("#clearDay");
+  if (clear) clear.onclick = () => { state.selectedDay = null; render(); };
+  $$("[data-open]").forEach(b => b.onclick = () => openView(b.dataset.open));
+  $$("[data-rsvp]").forEach(b => b.onclick = () => setRsvp(b.dataset.rsvp, b.dataset.status, b, render));
+  $$("[data-remind]").forEach(b => b.onclick = () => guarded(b, async () => {
+    if (!signedIn()) return needSignIn();
     const e = state.events.find(x => x.id === b.dataset.remind);
-    const last = e.lastRemind || 0;
-    if (Date.now() - last < 12*3600e3) return alert("A reminder already went out in the last 12 hours.");
-    e.lastRemind = Date.now();
-    const pending = Object.keys(state.people).filter(id => !e.rsvps[id] && id !== state.me);
-    notify(`Reminder: ${e.title} — still waiting on ${pending.map(id=>person(id).name).join(", ") || "no one"}`, "reminder");
-    save(); render();
-  });
-  $("#addEvent").onclick = () => openSheet("event");
+    if (state.reminders.some(r => r.event === e.id && Date.now() - r.at < 12 * HOUR)) throw new Error("A reminder already went out in the last 12 hours.");
+    const pending = Object.keys(state.people).filter(id => id !== state.me && !e.rsvps[id]);
+    if (!pending.length) throw new Error("Everyone has answered.");
+    unwrap(await sb.from("event_reminders").insert({ event_id: e.id, sent_by: state.me }));
+    await loadFamily(); render();
+    toast(`Reminder sent. ${pending.map(id => person(id).name).join(", ")} will see it in Notes.`);
+  }));
+  $("#addEvent").onclick = () => { if (!signedIn()) return needSignIn(); openSheet("event"); };
 }
 
+function setRsvp(id, status, btn, after) {
+  if (!signedIn()) return needSignIn();
+  return guarded(btn, async () => {
+    unwrap(await sb.from("event_rsvps").upsert({ event_id: id, user_id: state.me, status }));
+    await loadFamily();
+    after();
+  });
+}
+
+/* ---------- me + settings ---------- */
 function renderMe() {
+  if (!session) { $("#me").innerHTML = signedOutPrompt("Sign in to see your profile."); return; }
   const me = person(state.me);
   const mine = state.posts.filter(p => p.author === state.me);
-  const mineEvents = state.events.filter(e => e.creator === state.me || e.rsvps[state.me]);
+  const mineEvents = state.events.filter(e => e.creator === state.me || (e.rsvps[state.me] && e.rsvps[state.me] !== "no"));
   $("#me").innerHTML = `
     <div class="profile-head">
-      <div class="av" style="background:${me.color}">${initials(me.name)}</div>
-      <h2>${me.name}</h2>
-      <div class="status">${escapeHtml(me.status || "No status")}</div>
-      <div class="time">${escapeHtml(me.bio || "")}</div>
-      <button class="ghost" id="editStatus">Update status</button>
+      ${avatar(state.me)}
+      <h2>${esc(me.name)}</h2>
+      <div class="status">${esc(me.status || "No status")}</div>
+      <div class="time">${esc(me.bio || "")}</div>
+      <button class="ghost" id="editProfile">Edit profile</button>
     </div>
     <div class="grid">
-      ${mine.map(p => p.image || p.ig
-        ? `<button class="tile photo-tile"><span>${escapeHtml((p.body||"Instagram").slice(0,80))}</span><small>${ago(p.created)}</small></button>`
-        : `<button class="tile"><span>${escapeHtml((p.body||"").slice(0,90))}</span><small>${ago(p.created)}</small></button>`).join("")}
-      ${mineEvents.map(e => `<button class="tile"><span>${escapeHtml(e.title)}</span><small>Event</small></button>`).join("")}
+      ${mine.map(p => `<div class="tile${p.ig ? " photo-tile" : ""}"><span>${esc(clip(p.body || "Instagram", 90))}</span><small>${ago(p.created)}</small></div>`).join("")}
+      ${mineEvents.map(e => `<div class="tile"><span>${esc(e.title)}</span><small>Event</small></div>`).join("")}
     </div>
+    ${!mine.length && !mineEvents.length ? `<div class="empty">Your posts and events will show up here.</div>` : ""}
     <button class="pill" id="openSettings" style="margin-top:16px">Settings</button>
   `;
-  $("#editStatus").onclick = () => {
-    const s = prompt("Status", me.status || "");
-    if (s == null) return;
-    me.status = s;
-    save(); render();
-  };
-  $("#openSettings").onclick = () => { state.tab = "settings"; save(); render(); };
+  $("#editProfile").onclick = () => openSheet("profile");
+  $("#openSettings").onclick = () => go("settings");
 }
 
 function renderSettings() {
@@ -642,167 +907,231 @@ function renderSettings() {
   $("#settings").innerHTML = `
     <button class="ghost" id="backMe">‹ Profile</button>
     <div class="setting"><h3>Appearance</h3>
-      <div class="seg">${["system","light","dark"].map(t => `<button data-theme="${t}" class="${state.theme===t?"on":""}">${t}</button>`).join("")}</div>
+      <div class="seg">${["system", "light", "dark"].map(t => `<button data-theme="${t}" class="${state.theme === t ? "on" : ""}">${t}</button>`).join("")}</div>
       <div class="row" style="margin-top:12px;gap:10px">
-        ${[["clay","#c45c26"],["olive","#3e5344"],["ink","#243044"],["gold","#a57a2d"]].map(([k,c]) => `<button class="swatch ${state.accent===k?"on":""}" data-accent="${k}" style="background:${c}"></button>`).join("")}
+        ${[["clay", "#c45c26"], ["olive", "#3e5344"], ["ink", "#243044"], ["gold", "#a57a2d"]].map(([k, c]) => `<button class="swatch ${state.accent === k ? "on" : ""}" data-accent="${k}" aria-label="${k} accent" style="background:${c}"></button>`).join("")}
       </div>
     </div>
-    <div class="setting"><h3>Notifications</h3>
-      ${[["replies","Replies"],["events","Invites"],["reminders","Event reminders"],["digest","Morning digest"]].map(([k,label]) => `
-        <div class="switch-row"><span>${label}</span><button class="chip ${s[k]?"on":""}" data-set="${k}">${s[k]?"On":"Off"}</button></div>`).join("")}
+    <div class="setting"><h3>What shows in Notes</h3>
+      ${[["replies", "Replies"], ["events", "Invites and RSVPs"], ["reminders", "Event reminders"]].map(([k, label]) => `
+        <div class="switch-row"><span>${label}</span><button class="chip ${s[k] ? "on" : ""}" data-set="${k}">${s[k] ? "On" : "Off"}</button></div>`).join("")}
+      <p class="time">Push notifications aren't on yet. Notes fill in when you open the app.</p>
     </div>
     <div class="setting"><h3>Ask cap</h3>
       <div class="switch-row"><span>Asks per week</span><strong>${s.cap}</strong></div>
-      <div class="chips">
-        ${[1,3,5].map(n => `<button class="chip ${s.cap===n?"on":""}" data-cap="${n}">${n}</button>`).join("")}
-      </div>
+      <div class="chips">${[1, 3, 5].map(n => `<button class="chip ${s.cap === n ? "on" : ""}" data-cap="${n}">${n}</button>`).join("")}</div>
       <p class="time">Used ${asksUsed()} this week. Resets Monday.</p>
     </div>
     <div class="setting"><h3>Account</h3>
-      <p class="time">Google sign-in is the real gate. This build signs in as Anthony so the screens can be used.</p>
+      ${session ? `<p class="time">Signed in as ${esc(session.user.email)}</p><button class="ghost" id="signOut">Sign out</button>`
+        : `<p class="time">Not signed in.</p><button class="ghost" data-act="signin">Sign in</button>`}
       <button class="ghost" id="replaySetup">Replay setup</button>
-      <button class="ghost" id="reset">Reset this phone’s copy</button>
+      <button class="ghost" id="reset">Reset this phone's settings</button>
     </div>
   `;
-  $("#backMe").onclick = () => { state.tab = "me"; render(); };
-  $$("[data-theme]").forEach(b => b.onclick = () => { state.theme = b.dataset.theme; save(); applyTheme(); render(); });
-  $$("[data-accent]").forEach(b => b.onclick = () => { state.accent = b.dataset.accent; save(); applyTheme(); render(); });
-  $$("[data-set]").forEach(b => b.onclick = () => { s[b.dataset.set] = !s[b.dataset.set]; save(); render(); });
-  $$("[data-cap]").forEach(b => b.onclick = () => { s.cap = +b.dataset.cap; save(); render(); });
-  $("#reset").onclick = () => { localStorage.removeItem(KEY); state = seed(); applyTheme(); render(); };
+  $("#backMe").onclick = () => go("me");
+  $$("[data-theme]").forEach(b => b.onclick = () => { state.theme = b.dataset.theme; applyTheme(); render(); });
+  $$("[data-accent]").forEach(b => b.onclick = () => { state.accent = b.dataset.accent; applyTheme(); render(); });
+  $$("[data-set]").forEach(b => b.onclick = () => { s[b.dataset.set] = !s[b.dataset.set]; render(); });
+  $$("[data-cap]").forEach(b => b.onclick = () => { s.cap = +b.dataset.cap; render(); });
+  const out = $("#signOut");
+  if (out) out.onclick = async () => { if (confirm("Sign out of Zuniga on this phone?")) await sb.auth.signOut(); };
   $("#replaySetup").onclick = () => startSetup();
+  $("#reset").onclick = () => {
+    if (!confirm("Reset theme, accent and notification settings on this phone?")) return;
+    localStorage.removeItem(KEY); localStorage.removeItem(OLD_KEY);
+    Object.assign(state, { theme: "system", accent: "clay", settings: defaultSettings(), setupDone: false, calView: "month", seenAt: 0 });
+    applyTheme(); render();
+  };
 }
 
+/* ---------- sheets ---------- */
 function openSheet(kind, id) {
   $("#sheet").classList.add("on");
-  if (kind === "view") {
-    const e = state.events.find(x => x.id === id);
-    const when = new Date(e.starts);
-    $("#panel").innerHTML = `
-      ${e.banner ? `<div class="event-banner" style="background-image:url('${e.banner}')"></div>` : `<div class="event-banner" style="background:${e.color || "#c45c26"}"></div>`}
-      <h2 style="font-family:Fraunces,serif;margin:0 0 6px">${escapeHtml(e.title)}</h2>
-      <div class="time">${when.toLocaleString(undefined,{weekday:"long",month:"long",day:"numeric",hour:"numeric",minute:"2-digit"})}</div>
-      ${e.location ? `<p class="body">${escapeHtml(e.location)}</p>` : ""}
-      ${e.website ? `<p><a href="${escapeHtml(e.website)}" target="_blank" rel="noopener">${escapeHtml(e.website)}</a></p>` : ""}
-      <div class="chips">
-        ${["going","maybe","no"].map(s => `<button class="chip ${e.rsvps[state.me]===s?"on":""}" data-rsvp="${e.id}" data-status="${s}">${s}</button>`).join("")}
-      </div>
-      <div class="row" style="margin-top:12px"><button class="ghost" id="closeSheet">Close</button></div>`;
-    $$("[data-rsvp]", $("#panel")).forEach(b => b.onclick = async () => {
-      const { error } = await sb.from("event_rsvps").upsert({ event_id: e.id, user_id: state.me, status: b.dataset.status });
-      if (error) return alert(error.message);
-      await loadFamily();
-      openSheet("view", id);
-    });
-  } else if (kind === "event") {
-    let banner = "";
-    let color = EVENT_COLORS[0];
-    $("#panel").innerHTML = `
+  const panel = $("#panel");
+  if (kind === "view") return openView(id);
+  if (kind === "event") {
+    let banner = "", color = EVENT_COLORS[0];
+    const base = state.selectedDay || (state.calView === "day" ? state.cursor : null);
+    let def;
+    if (base) { def = new Date(base); def.setHours(12, 0, 0, 0); }
+    else { def = new Date(Date.now() + HOUR); def.setMinutes(0, 0, 0); }
+    panel.innerHTML = `
       <h2 style="font-family:Fraunces,serif;margin:4px 0 12px">Invitation</h2>
-      <input id="evTitle" class="field" type="text" placeholder="Birthday, Sunday, Legoland" />
-      <input id="evWhen" class="field" type="datetime-local" />
+      <input id="evTitle" class="field" type="text" maxlength="80" placeholder="Birthday, Sunday, Legoland" aria-label="Title" />
+      <input id="evWhen" class="field" type="datetime-local" aria-label="Date and time" value="${toLocalInput(def)}" />
       <div class="suggest">
-        <input id="evWhere" class="field" type="text" placeholder="Location" autocomplete="off" />
+        <input id="evWhere" class="field" type="text" placeholder="Location" aria-label="Location" autocomplete="off" />
         <div class="suggest-list" id="placeList" hidden></div>
       </div>
-      <input id="evSite" class="field" type="url" placeholder="Website link (optional)" />
-      <button class="file-btn" id="pickBanner">Add banner image (optional)</button>
+      <input id="evSite" class="field" type="text" inputmode="url" placeholder="Website link (optional)" aria-label="Website" />
+      <button class="file-btn" id="pickBanner" type="button">Add banner image (optional)</button>
       <input id="evBanner" type="file" accept="image/*" hidden />
       <div id="bannerPreview"></div>
       <div class="time" style="margin-bottom:6px">Calendar color</div>
       <div class="row" style="margin-bottom:12px" id="colorRow">
-        ${EVENT_COLORS.map((c,i) => `<button type="button" class="color-pick ${i===0?"on":""}" data-color="${c}" style="background:${c}"></button>`).join("")}
+        ${EVENT_COLORS.map((c, i) => `<button type="button" class="color-pick ${i === 0 ? "on" : ""}" data-color="${c}" aria-label="Color ${i + 1}" style="background:${c}"></button>`).join("")}
       </div>
       <div class="row"><button class="ghost" id="closeSheet">Cancel</button><button class="pill" id="saveEvent">Invite family</button></div>`;
     const where = $("#evWhere");
     let timer;
-    where.oninput = () => {
-      clearTimeout(timer);
-      const q = where.value.trim();
-      timer = setTimeout(() => suggestPlaces(q), 220);
-    };
+    where.oninput = () => { clearTimeout(timer); const q = where.value.trim(); timer = setTimeout(() => suggestPlaces(q), 220); };
     $("#pickBanner").onclick = () => $("#evBanner").click();
     $("#evBanner").onchange = async () => {
       const file = $("#evBanner").files[0];
       if (!file) return;
-      banner = await compressImage(file);
-      $("#bannerPreview").innerHTML = `<div class="event-banner" style="background-image:url('${banner}')"></div>`;
+      try {
+        banner = await compressImage(file);
+        $("#bannerPreview").innerHTML = `<div class="event-banner" id="bannerImg"></div>`;
+        $("#bannerImg").style.backgroundImage = `url('${banner}')`;
+      } catch { toast("Couldn't read that image.", true); }
     };
-    $$("[data-color]").forEach(b => b.onclick = () => {
-      color = b.dataset.color;
-      $$("[data-color]").forEach(x => x.classList.toggle("on", x === b));
-    });
-    $("#saveEvent").onclick = async () => {
-      if (!session) return alert("Sign in first.");
-      const title = $("#evTitle").value.trim();
-      const when = $("#evWhen").value;
-      if (!title || !when) return;
-      const { error } = await sb.from("events").insert({
-        creator_id: state.me,
-        title,
-        starts_at: new Date(when).toISOString(),
-        location: where.value.trim() || null,
-        website: $("#evSite").value.trim() || null,
-        color,
-        banner_url: banner || null
-      });
-      if (error) return alert(error.message);
-      const { data: created } = await sb.from("events").select("id").eq("creator_id", state.me).order("created_at", { ascending: false }).limit(1);
-      if (created && created[0]) await sb.from("event_rsvps").upsert({ event_id: created[0].id, user_id: state.me, status: "going" });
+    $$("[data-color]").forEach(b => b.onclick = () => { color = b.dataset.color; $$("[data-color]").forEach(x => x.classList.toggle("on", x === b)); });
+    $("#saveEvent").onclick = e => guarded(e.currentTarget, async () => {
+      if (!signedIn()) return needSignIn();
+      const title = $("#evTitle").value.trim(), when = $("#evWhen").value;
+      if (!title) throw new Error("Give the invitation a title.");
+      if (!when) throw new Error("Pick a date and time.");
+      const siteRaw = $("#evSite").value.trim(), site = siteRaw ? safeUrl(siteRaw) : "";
+      if (siteRaw && !site) throw new Error("That website link doesn't look right.");
+      const created = unwrap(await sb.from("events").insert({
+        creator_id: state.me, title, starts_at: new Date(when).toISOString(),
+        location: where.value.trim() || null, website: site || null, color, banner_url: banner || null
+      }).select("id").single());
+      unwrap(await sb.from("event_rsvps").upsert({ event_id: created.id, user_id: state.me, status: "going" }));
+      const d = new Date(when);
+      state.cursor = startOfDay(d); state.selectedDay = null;
       closeSheet();
-      await loadFamily();
-      render();
-    };
+      await loadFamily(); render();
+      toast("Invitation sent.");
+    });
+  } else if (kind === "ask") {
+    const left = Math.max(0, state.settings.cap - asksUsed());
+    panel.innerHTML = `
+      <h2 style="font-family:Fraunces,serif;margin:4px 0 6px">Ask the family</h2>
+      <p class="time" style="margin:0 0 10px">${left} of ${state.settings.cap} asks left this week. An ask disappears after 24 hours.</p>
+      <input id="askMsg" class="field" type="text" maxlength="140" value="${esc(ASK_IDEAS[0])}" aria-label="Your question" />
+      <div class="chips" style="margin:0 0 12px">${ASK_IDEAS.map(t => `<button class="chip" data-idea="${esc(t)}">${esc(t)}</button>`).join("")}</div>
+      <div class="row"><button class="ghost" id="closeSheet">Cancel</button><button class="pill" id="sendAsk">Ask</button></div>`;
+    $$("[data-idea]").forEach(b => b.onclick = () => { $("#askMsg").value = b.dataset.idea; });
+    $("#sendAsk").onclick = e => guarded(e.currentTarget, async () => {
+      if (!signedIn()) return needSignIn();
+      if (asksUsed() >= state.settings.cap) throw new Error("Weekly ask cap reached. It resets Monday.");
+      const message = $("#askMsg").value.trim();
+      if (!message) return;
+      unwrap(await sb.from("asks").insert({ from_user_id: state.me, message }));
+      closeSheet();
+      await loadFamily(); render();
+    });
+  } else if (kind === "profile") {
+    const me = person(state.me);
+    panel.innerHTML = `
+      <h2 style="font-family:Fraunces,serif;margin:4px 0 12px">Your profile</h2>
+      <input id="pfName" class="field" type="text" maxlength="40" value="${esc(me.name)}" placeholder="Name" aria-label="Name" />
+      <input id="pfStatus" class="field" type="text" maxlength="80" value="${esc(me.status)}" placeholder="Status, like “at the park”" aria-label="Status" />
+      <input id="pfBio" class="field" type="text" maxlength="80" value="${esc(me.bio)}" placeholder="A short line about you" aria-label="Bio" />
+      <div class="row"><button class="ghost" id="closeSheet">Cancel</button><button class="pill" id="savePf">Save</button></div>`;
+    $("#savePf").onclick = e => guarded(e.currentTarget, async () => {
+      const display_name = $("#pfName").value.trim();
+      if (!display_name) throw new Error("Name can't be empty.");
+      const rows = unwrap(await sb.from("users").update({ display_name, status: $("#pfStatus").value.trim() || null, bio: $("#pfBio").value.trim() || null }).eq("id", state.me).select("id"));
+      if (!rows || !rows.length) throw new Error("The server didn't allow that change.");
+      closeSheet();
+      await loadFamily(); render();
+    });
   } else {
-    $("#panel").innerHTML = `
+    panel.innerHTML = `
       <h2 style="font-family:Fraunces,serif;margin:4px 0 12px">New</h2>
-      <button class="pill" id="goPost">Life update</button>
+      <button class="pill" id="goPost" style="width:100%;margin-bottom:8px">Life update</button>
+      <button class="ghost" id="goAsk">Ask the family</button>
       <button class="ghost" id="goEvent">Invitation</button>
       <button class="ghost" id="closeSheet">Close</button>`;
-    $("#goPost").onclick = () => { closeSheet(); state.tab = "feed"; render(); };
-    $("#goEvent").onclick = () => openSheet("event");
+    $("#goPost").onclick = () => { closeSheet(); go("feed"); const pb = $("#postBody"); if (pb) pb.focus(); };
+    $("#goAsk").onclick = () => { if (!signedIn()) { closeSheet(); return needSignIn(); } openSheet("ask"); };
+    $("#goEvent").onclick = () => { if (!signedIn()) { closeSheet(); return needSignIn(); } openSheet("event"); };
   }
   $("#closeSheet").onclick = closeSheet;
+  const firstField = $("input:not([type=file]):not([hidden])", panel);
+  if (firstField && kind !== "new") firstField.focus({ preventScroll: true });
 }
 
+function openView(id) {
+  const e = state.events.find(x => x.id === id);
+  if (!e) return closeSheet();
+  $("#sheet").classList.add("on");
+  const when = new Date(e.starts);
+  const site = safeUrl(e.website);
+  const groups = ["going", "maybe", "no"].map(st => {
+    const names = Object.entries(e.rsvps).filter(([, s]) => s === st).map(([uid]) => nm(uid));
+    return names.length ? `${st === "no" ? "Can't make it" : st[0].toUpperCase() + st.slice(1)}: ${names.join(", ")}` : "";
+  }).filter(Boolean);
+  const quiet = Object.keys(state.people).filter(uid => !e.rsvps[uid]).map(nm);
+  if (quiet.length) groups.push(`No reply: ${quiet.join(", ")}`);
+  $("#panel").innerHTML = `
+    <div class="event-banner" id="viewBanner" style="background:${safeColor(e.color)}"></div>
+    <h2 style="font-family:Fraunces,serif;margin:0 0 6px">${esc(e.title)}</h2>
+    <div class="time">${esc(when.toLocaleString(undefined, { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }))}</div>
+    ${e.location ? `<p class="body"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(e.location)}" target="_blank" rel="noopener noreferrer">${esc(e.location)}</a></p>` : ""}
+    ${site ? `<p class="body"><a href="${esc(site)}" target="_blank" rel="noopener noreferrer">${esc(new URL(site).hostname.replace(/^www\./, ""))}</a></p>` : ""}
+    <div class="chips">${["going", "maybe", "no"].map(s => `<button class="chip ${e.rsvps[state.me] === s ? "on" : ""}" data-rsvp="${esc(e.id)}" data-status="${s}">${s}</button>`).join("")}</div>
+    ${groups.length ? `<p class="time" style="line-height:1.6">${groups.join("<br>")}</p>` : ""}
+    <div class="row" style="margin-top:12px;justify-content:space-between">
+      <button class="ghost" id="closeSheet">Close</button>
+      ${e.creator === state.me ? `<button class="ghost del" id="delEvent">Delete event</button>` : ""}
+    </div>`;
+  $$("[data-rsvp]", $("#panel")).forEach(b => b.onclick = () => setRsvp(e.id, b.dataset.status, b, () => { openView(id); render(); }));
+  const del = $("#delEvent");
+  if (del) del.onclick = () => deleteRow(del, "events", e.id, "Delete this event for everyone?", closeSheet);
+  $("#closeSheet").onclick = closeSheet;
+  ensureBanner(id).then(url => { const el = $("#viewBanner"); if (el && url) el.style.backgroundImage = `url('${url}')`, el.style.backgroundSize = "cover", el.style.backgroundPosition = "center"; });
+}
+
+async function ensureBanner(id) {
+  if (id in state.bannerCache) return state.bannerCache[id];
+  if (!sb || !session) return "";
+  const { data, error } = await sb.from("events").select("banner_url").eq("id", id).maybeSingle();
+  const url = error ? "" : safeBannerUrl(data && data.banner_url);
+  state.bannerCache[id] = url;
+  return url;
+}
+
+let placeAbort;
 async function suggestPlaces(q) {
   const list = $("#placeList");
-  if (!list || q.length < 2) { if (list) list.hidden = true; return; }
-  const local = FAMILY_PLACES.filter(p => p.toLowerCase().includes(q.toLowerCase()));
-  let remote = [];
+  if (!list) return;
+  if (q.length < 2) { list.hidden = true; return; }
+  const ql = q.toLowerCase();
+  const recent = [...new Set(state.events.map(e => e.location).filter(Boolean))];
+  const local = [...recent, ...FAMILY_PLACES].filter(p => p.toLowerCase().includes(ql));
+  const paint = items => {
+    items = [...new Set(items)].slice(0, 6);
+    if (!items.length) { list.hidden = true; return; }
+    list.hidden = false;
+    list.innerHTML = items.map(p => `<button type="button" data-place="${esc(p)}">${esc(p)}</button>`).join("");
+    $$("[data-place]", list).forEach(b => b.onclick = () => { $("#evWhere").value = b.dataset.place; list.hidden = true; });
+  };
+  paint(local);
+  if (placeAbort) placeAbort.abort();
+  placeAbort = new AbortController();
   try {
-    const res = await fetch("https://photon.komoot.io/api/?limit=5&lang=en&q=" + encodeURIComponent(q));
-    if (res.ok) {
-      const data = await res.json();
-      remote = (data.features || []).map(f => {
-        const p = f.properties || {};
-        return [p.name, p.city || p.county, p.state, p.country].filter(Boolean).join(", ");
-      });
-    }
-  } catch (err) {}
-  const items = [...new Set([...local, ...remote])].slice(0, 6);
-  if (!items.length) { list.hidden = true; return; }
-  list.hidden = false;
-  list.innerHTML = items.map(p => `<button type="button" data-place="${escapeHtml(p)}">${escapeHtml(p)}</button>`).join("");
-  $$("[data-place]", list).forEach(b => b.onclick = () => {
-    $("#evWhere").value = b.dataset.place;
-    list.hidden = true;
-  });
+    const res = await fetch("https://photon.komoot.io/api/?limit=5&lang=en&q=" + encodeURIComponent(q), { signal: placeAbort.signal });
+    if (!res.ok) return;
+    const data = await res.json();
+    const remote = (data.features || []).map(f => { const p = f.properties || {}; return [p.name, p.city || p.county, p.state, p.country].filter(Boolean).join(", "); });
+    if ($("#placeList")) paint([...local, ...remote]);
+  } catch {}
 }
 
 function compressImage(file) {
   return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
+    const img = new Image(), url = URL.createObjectURL(file);
     img.onload = () => {
-      const max = 960;
-      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const scale = Math.min(1, 800 / Math.max(img.width, img.height));
       const canvas = document.createElement("canvas");
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
+      canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale);
       canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
       URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", 0.72));
+      resolve(canvas.toDataURL("image/jpeg", 0.7));
     };
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("image")); };
     img.src = url;
@@ -811,89 +1140,87 @@ function compressImage(file) {
 function closeSheet() { $("#sheet").classList.remove("on"); }
 $("#composeOpen").onclick = () => openSheet("new");
 $("#sheet").onclick = e => { if (e.target.id === "sheet") closeSheet(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
 
-function escapeHtml(s="") {
-  return String(s).replace(/[&<>"]/g, c => ({'&':'&','<':'<','>':'>','"':'"'}[c]));
-}
-
+/* ---------- render + navigation ---------- */
 function render() {
   applyTheme();
-  const tab = state.tab || "feed";
-  $$(".screen").forEach(s => s.classList.remove("on"));
-  $("#"+tab).classList.add("on");
-  $$("nav.tab button").forEach(b => b.classList.toggle("on", b.dataset.tab === (tab==="settings"?"me":tab)));
-  const unread = state.notes.filter(n => !n.read).length;
-  $("[data-tab=notes]").classList.toggle("has", unread > 0);
-  if (tab === "feed") renderFeed();
-  if (tab === "notes") renderNotes();
-  if (tab === "events") renderEvents();
-  if (tab === "me") renderMe();
-  if (tab === "settings") renderSettings();
+  const tab = state.tab;
+  $$(".screen").forEach(s => s.classList.toggle("on", s.id === tab));
+  $$("nav.tab button").forEach(b => {
+    const on = b.dataset.tab === (tab === "settings" ? "me" : tab);
+    b.classList.toggle("on", on);
+    if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  });
+  ({ feed: renderFeed, notes: renderNotes, events: renderEvents, me: renderMe, settings: renderSettings })[tab]();
+  updateDot();
   save();
 }
-$$("nav.tab button").forEach(b => b.onclick = () => { state.tab = b.dataset.tab; render(); });
-render();
+function go(tab) {
+  if (tab === "notes" && state.tab !== "notes") state.notesBaseline = state.seenAt;
+  state.tab = tab;
+  render();
+  window.scrollTo(0, 0);
+}
+$$("nav.tab button").forEach(b => b.onclick = () => go(b.dataset.tab));
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-act]");
+  if (!b) return;
+  if (b.dataset.act === "signin") needSignIn();
+  if (b.dataset.act === "retry") refresh(true);
+});
 
+/* ---------- refresh ---------- */
+const isEditing = () => { const a = document.activeElement; return !!(a && a.matches("input, textarea") && a.closest("main")); };
+let pollTimer;
+async function refresh(force) {
+  if (!session || !state.me) return;
+  await loadFamily();
+  if (force || !isEditing()) render(); else updateDot();
+}
+function startPolling() {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(() => { if (document.visibilityState === "visible") refresh(); }, 45000);
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });
+addEventListener("online", () => refresh());
+
+/* ---------- setup flow ---------- */
 const installed = () => window.navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
 let setupStep = 0;
-function startSetup() {
-  setupStep = 0;
-  $("#setup").classList.add("on");
-  drawSetup();
-}
+function startSetup() { setupStep = 0; $("#setup").classList.add("on"); drawSetup(); }
 function drawSetup() {
   const s = state.settings;
-  const dots = [0,1,2,3,4].map(i => `<i class="${i===setupStep?"on":""}"></i>`).join("");
+  const dots = [0, 1, 2, 3, 4].map(i => `<i class="${i === setupStep ? "on" : ""}"></i>`).join("");
   const steps = [
     `<div class="setup-progress">${dots}</div><h2>This is the family hub.</h2><p>Feed for life updates. Notes when someone replies or asks. Events for invitations. Me for your profile. It sits next to the sibling chat. It does not replace it.</p>`,
-    `<div class="setup-progress">${dots}</div><h2>Theme</h2><p>Light, dark, or follow the phone. You can change this later in Settings.</p><div class="seg">${["system","light","dark"].map(t => `<button data-theme="${t}" class="${state.theme===t?"on":""}">${t}</button>`).join("")}</div>`,
-    `<div class="setup-progress">${dots}</div><h2>Your accent</h2><p>This colors buttons and your side of the app. It does not change anyone else’s phone.</p><div class="row" style="gap:10px">${[["clay","#c45c26"],["olive","#3e5344"],["ink","#243044"],["gold","#a57a2d"]].map(([k,c]) => `<button class="swatch ${state.accent===k?"on":""}" data-accent="${k}" style="background:${c}"></button>`).join("")}</div>`,
+    `<div class="setup-progress">${dots}</div><h2>Theme</h2><p>Light, dark, or follow the phone. You can change this later in Settings.</p><div class="seg">${["system", "light", "dark"].map(t => `<button data-theme="${t}" class="${state.theme === t ? "on" : ""}">${t}</button>`).join("")}</div>`,
+    `<div class="setup-progress">${dots}</div><h2>Your accent</h2><p>This colors buttons and your side of the app. It does not change anyone else's phone.</p><div class="row" style="gap:10px">${[["clay", "#c45c26"], ["olive", "#3e5344"], ["ink", "#243044"], ["gold", "#a57a2d"]].map(([k, c]) => `<button class="swatch ${state.accent === k ? "on" : ""}" data-accent="${k}" aria-label="${k} accent" style="background:${c}"></button>`).join("")}</div>`,
     `<div class="setup-progress">${dots}</div><h2>Home screen mark</h2><img class="home-icon" src="icon-180.png" alt="Gold Z on black" /><p>iPhone locks this icon when you add the app. It is the family Z, gold on black, with the usual rounded corners. It cannot be a different logo per person unless the shortcut is removed and added again.</p>`,
-    `<div class="setup-progress">${dots}</div><h2>What can reach you</h2><p>Asks are capped so this does not become a second group chat.</p>
-      ${[["replies","Replies"],["events","Invites"],["reminders","Reminders"]].map(([k,label]) => `<div class="switch-row"><span>${label}</span><button class="chip ${s[k]?"on":""}" data-set="${k}">${s[k]?"On":"Off"}</button></div>`).join("")}
-      <div class="chips" style="margin-top:8px">${[1,3,5].map(n => `<button class="chip ${s.cap===n?"on":""}" data-cap="${n}">${n} asks / week</button>`).join("")}</div>`
+    `<div class="setup-progress">${dots}</div><h2>What shows in Notes</h2><p>Asks are capped so this does not become a second group chat.</p>
+      ${[["replies", "Replies"], ["events", "Invites"], ["reminders", "Reminders"]].map(([k, label]) => `<div class="switch-row"><span>${label}</span><button class="chip ${s[k] ? "on" : ""}" data-set="${k}">${s[k] ? "On" : "Off"}</button></div>`).join("")}
+      <div class="chips" style="margin-top:8px">${[1, 3, 5].map(n => `<button class="chip ${s.cap === n ? "on" : ""}" data-cap="${n}">${n} asks / week</button>`).join("")}</div>`
   ];
-  $("#setupPanel").innerHTML = steps[setupStep] + `<div class="row" style="margin-top:18px;justify-content:space-between"><button class="ghost" id="setupSkip">${setupStep===0?"Not now":"Back"}</button><button class="pill" id="setupNext">${setupStep===4?"Enter":"Continue"}</button></div>`;
-  $$("[data-theme]", $("#setupPanel")).forEach(b => b.onclick = () => { state.theme = b.dataset.theme; save(); applyTheme(); drawSetup(); });
-  $$("[data-accent]", $("#setupPanel")).forEach(b => b.onclick = () => { state.accent = b.dataset.accent; save(); applyTheme(); drawSetup(); });
-  $$("[data-set]", $("#setupPanel")).forEach(b => b.onclick = () => { s[b.dataset.set] = !s[b.dataset.set]; save(); drawSetup(); });
-  $$("[data-cap]", $("#setupPanel")).forEach(b => b.onclick = () => { s.cap = +b.dataset.cap; save(); drawSetup(); });
+  const panel = $("#setupPanel");
+  panel.innerHTML = steps[setupStep] + `<div class="row" style="margin-top:18px;justify-content:space-between"><button class="ghost" id="setupSkip">${setupStep === 0 ? "Not now" : "Back"}</button><button class="pill" id="setupNext">${setupStep === 4 ? "Enter" : "Continue"}</button></div>`;
+  $$("[data-theme]", panel).forEach(b => b.onclick = () => { state.theme = b.dataset.theme; save(); applyTheme(); drawSetup(); });
+  $$("[data-accent]", panel).forEach(b => b.onclick = () => { state.accent = b.dataset.accent; save(); applyTheme(); drawSetup(); });
+  $$("[data-set]", panel).forEach(b => b.onclick = () => { s[b.dataset.set] = !s[b.dataset.set]; save(); drawSetup(); });
+  $$("[data-cap]", panel).forEach(b => b.onclick = () => { s.cap = +b.dataset.cap; save(); drawSetup(); });
   $("#setupSkip").onclick = () => {
-    if (setupStep === 0) { state.setupDone = true; save(); $("#setup").classList.remove("on"); return; }
+    if (setupStep === 0) { state.setupDone = true; save(); $("#setup").classList.remove("on"); render(); return; }
     setupStep -= 1; drawSetup();
   };
   $("#setupNext").onclick = () => {
     if (setupStep < 4) { setupStep += 1; drawSetup(); return; }
-    state.setupDone = true; save(); $("#setup").classList.remove("on");
+    state.setupDone = true; save(); $("#setup").classList.remove("on"); render();
   };
 }
 
-setTimeout(() => {
-  const splash = document.getElementById("splash");
-  const fromIcon = installed();
-  if (!fromIcon && splash) splash.remove();
-  if (fromIcon && splash) {
-    splash.classList.add("out");
-    setTimeout(() => splash.remove(), 700);
-    if (!state.setupDone) startSetup();
-    return;
-  }
-  const dismissed = sessionStorage.getItem("zuniga-door") || localStorage.getItem("zuniga-door-day") === new Date().toDateString();
-  if (!dismissed) $("#door").classList.add("on");
-}, 400);
-$("#doorHide").onclick = () => { sessionStorage.setItem("zuniga-door", "1"); $("#door").classList.remove("on"); };
-$("#doorLater").onclick = () => { localStorage.setItem("zuniga-door-day", new Date().toDateString()); $("#door").classList.remove("on"); };
+/* ---------- door (install + sign in) ---------- */
 const platformSteps = {
-  iphone: [
-    "Open this page in Safari, not Chrome",
-    "Tap Share, the square with the arrow",
-    "Tap Add to Home Screen, then Add"
-  ],
-  android: [
-    "Open this page in Chrome",
-    "Tap the three dots, then Install app",
-    "If that is missing, tap Add to Home screen, then Install"
-  ]
+  iphone: ["Open this page in Safari, not Chrome", "Tap Share, the square with the arrow", "Tap Add to Home Screen, then Add"],
+  android: ["Open this page in Chrome", "Tap the three dots, then Install app", "If that is missing, tap Add to Home screen, then Install"]
 };
 function drawPlatform(which) {
   $("#platform").value = which;
@@ -902,84 +1229,101 @@ function drawPlatform(which) {
 $("#platform").onchange = () => drawPlatform($("#platform").value);
 drawPlatform(/android/i.test(navigator.userAgent) ? "android" : "iphone");
 
-const colors = ["#c45c26", "#8a5a44", "#3e5344", "#243044", "#7a3048", "#2f5d62"];
-function paintPerson(row, i) {
-  state.people[row.id] = {
-    name: row.display_name || row.email,
-    color: colors[i % colors.length],
-    status: row.status || "",
-    bio: row.bio || ""
-  };
+function showDoor(mode) {
+  const install = mode === "install";
+  $("#installBox").hidden = !install;
+  $("#signBox").hidden = !!session;
+  $("#signClose").hidden = install;
+  $("#door").classList.add("on");
 }
-async function loadFamily() {
-  const [{ data: users }, { data: posts }, { data: asks }, { data: responses }, { data: events }, { data: rsvps }] = await Promise.all([
-    sb.from("users").select("*"),
-    sb.from("posts").select("*").order("created_at", { ascending: false }),
-    sb.from("asks").select("*").order("created_at", { ascending: false }),
-    sb.from("ask_responses").select("*"),
-    sb.from("events").select("*").order("starts_at"),
-    sb.from("event_rsvps").select("*")
-  ]);
-  state.people = {};
-  (users || []).forEach(paintPerson);
-  const byParent = {};
-  (posts || []).filter(p => p.parent_id).forEach(p => {
-    (byParent[p.parent_id] ||= []).push({ author: p.author_id, body: p.body || "" });
-  });
-  state.posts = (posts || []).filter(p => !p.parent_id).map(p => ({
-    id: p.id, author: p.author_id, body: p.body || "", ig: p.instagram_url || "", created: Date.parse(p.created_at), replies: byParent[p.id] || []
-  }));
-  const respMap = {};
-  (responses || []).forEach(r => { (respMap[r.ask_id] ||= {})[r.user_id] = r.response; });
-  state.asks = (asks || []).map(a => ({
-    id: a.id, from: a.from_user_id, message: a.message, created: Date.parse(a.created_at), expires: Date.parse(a.expires_at), responses: respMap[a.id] || {}
-  }));
-  const rsvpMap = {};
-  (rsvps || []).forEach(r => { (rsvpMap[r.event_id] ||= {})[r.user_id] = r.status; });
-  state.events = (events || []).map(e => ({
-    id: e.id, title: e.title, creator: e.creator_id, starts: e.starts_at, location: e.location || "", website: e.website || "", color: e.color, banner: e.banner_url || "", rsvps: rsvpMap[e.id] || {}
-  }));
+function maybeDoor() {
+  const dismissed = sessionStorage.getItem("zuniga-door") || localStorage.getItem("zuniga-door-day") === new Date().toDateString();
+  if (installed()) { if (!session) showDoor("signin"); return; }
+  if (!dismissed) showDoor("install");
 }
-async function ensureProfile() {
-  const email = session.user.email;
-  const { data: existing } = await sb.from("users").select("*").eq("email", email).maybeSingle();
-  if (existing) { state.me = existing.id; return; }
-  const name = session.user.user_metadata.full_name || email.split("@")[0];
-  const { data, error } = await sb.from("users").insert({
-    google_sub: session.user.id,
-    email,
-    display_name: name
-  }).select().single();
-  if (error) throw error;
-  state.me = data.id;
+$("#doorHide").onclick = () => { sessionStorage.setItem("zuniga-door", "1"); $("#door").classList.remove("on"); };
+$("#doorLater").onclick = () => { localStorage.setItem("zuniga-door-day", new Date().toDateString()); $("#door").classList.remove("on"); };
+$("#signClose").onclick = () => $("#door").classList.remove("on");
+
+const authMsg = t => { $("#authMsg").textContent = t; };
+const authDown = () => authMsg("Couldn't reach the sign-in service. Check your connection and reload.");
+async function sendMagic() {
+  if (!sb) return authDown();
+  const email = $("#magicEmail").value.trim();
+  if (!email) return authMsg("Type your email first.");
+  const btn = $("#magicBtn");
+  btn.disabled = true;
+  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: REDIRECT } });
+  btn.disabled = false;
+  authMsg(error ? error.message : "Check that inbox for the link. Open it in the same browser you're using now.");
+}
+$("#magicBtn").onclick = sendMagic;
+$("#magicEmail").onkeydown = e => { if (e.key === "Enter") sendMagic(); };
+$("#googleBtn").onclick = async () => {
+  if (!sb) return authDown();
+  const { error } = await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: REDIRECT } });
+  if (error) authMsg(error.message);
+};
+
+/* ---------- auth + boot ---------- */
+let entering = false;
+let booted = false;
+function cleanUrl() {
+  if (location.search.includes("code=") || location.hash.includes("access_token")) history.replaceState(null, "", location.pathname);
 }
 async function enterApp() {
-  await ensureProfile();
-  await loadFamily();
-  $("#door").classList.remove("on");
-  render();
-}
-$("#magicBtn").onclick = async () => {
-  const email = $("#magicEmail").value.trim();
-  if (!email) return;
-  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: "https://anthonyznft.github.io/zuniga_hub/" } });
-  $("#authMsg").textContent = error ? error.message : "Check that inbox for the link.";
-};
-$("#googleBtn").onclick = async () => {
-  const { error } = await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: "https://anthonyznft.github.io/zuniga_hub/" } });
-  if (error) $("#authMsg").textContent = error.message;
-};
-sb.auth.getSession().then(async ({ data }) => {
-  session = data.session;
-  if (!session) return;
-  try { await enterApp(); } catch (err) { $("#authMsg").textContent = err.message; $("#door").classList.add("on"); }
-});
-sb.auth.onAuthStateChange(async (_event, next) => {
-  session = next;
-  if (session) {
-    try { await enterApp(); } catch (err) { alert(err.message); }
+  if (entering) return;
+  entering = true;
+  try {
+    await ensureProfile();
+    await loadFamily();
+    if (!state.seenAt) state.seenAt = Date.now() - DAY;
+    $("#door").classList.remove("on");
+    cleanUrl();
+    render();
+    startPolling();
+    if (installed() && !state.setupDone) startSetup();
+  } catch (err) {
+    const msg = (err && err.message) || "";
+    authMsg(/row-level security|violates|permission|denied/i.test(msg) ? "That account isn't on the family list yet." : (msg || "Couldn't sign in."));
+    try { await sb.auth.signOut(); } catch {}
+    session = null; resetData(); render();
+    showDoor("signin");
+  } finally {
+    entering = false;
   }
-});
+}
+if (sb) {
+  sb.auth.onAuthStateChange((event, next) => {
+    if (event === "SIGNED_OUT") {
+      session = null; resetData(); clearInterval(pollTimer); render();
+      if (booted) maybeDoor();
+      return;
+    }
+    if (event === "SIGNED_IN" && next && (!session || session.user.id !== next.user.id)) {
+      session = next;
+      setTimeout(enterApp, 0);
+    } else if (next) {
+      session = next;
+    }
+  });
+}
+(async function boot() {
+  render();
+  const fromIcon = installed(), splash = $("#splash");
+  if (!fromIcon && splash) splash.remove();
+  if (sb) {
+    try { const { data } = await sb.auth.getSession(); session = data.session || session; } catch {}
+  }
+  if (fromIcon && splash) { await wait(500); splash.classList.add("out"); setTimeout(() => splash.remove(), 700); }
+  if (session && !state.me) await enterApp();
+  booted = true;
+  maybeDoor();
+})();
+
+if ("serviceWorker" in navigator) {
+  addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+}
 </script>
 </body>
 </html>
