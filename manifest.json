@@ -1,8 +1,12 @@
 {
+  "id": "./index.html",
   "name": "Zuniga",
   "short_name": "Zuniga",
+  "description": "A private home for the Zuniga family.",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#f3eee6",
   "theme_color": "#1c1915",
   "icons": [
